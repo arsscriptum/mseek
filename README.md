@@ -7,6 +7,8 @@
 
 A fast and powerful tool to search for strings and patterns in the memory space of running processes on a 64-bit/32bits Windows system.
 
+In the example below, you see it was used to crack the F-Secure Freedome VPN client
+
 ---
 
 ### 🛠 How to Build - Information
@@ -106,9 +108,9 @@ mseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]
 
 IF NOT RUNNNIG AS ADMIN, Some Process Are Not Accessible! If you cannot read a process memory, open a shell as administrator!
 
-#### Auao-Elecate 
+#### Auto-Elevate Privilege
 
-You can use ```-e``` to auto -elevate privileges.
+You can use ```-e``` to auto -elevate privileges (not fully supported, best you run directly in admin mode). If detected, auto elevate will sleep on exit, because a new window is opened and you want to read the results.
 
 
 --------------------------------
