@@ -73,7 +73,7 @@ public:
     void Initialize(bool dumpHex, bool printableOnly, bool suppress, DWORD slipBefore, DWORD slipAfter);
 
     // Public API
-    void EnumerateProcesses(bool bUseRegex, bool bReadable, bool bASCII, bool bUNICODE, const char* strString, bool outputToFile, std::string outputFile);
+    void SearchInAllProcess(bool bUseRegex, bool bReadable, bool bASCII, bool bUNICODE, const char* strString, bool outputToFile, std::string outputFile);
     EMemoryType GetMemType(MEMORY_BASIC_INFORMATION memMeminfo);
     void PrintMemInfo(MEMORY_BASIC_INFORMATION memMeminfo);
     

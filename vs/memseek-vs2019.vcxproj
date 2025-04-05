@@ -211,6 +211,7 @@ $(ProjectRoot)scripts\post-build.bat</Command>
     <ClInclude Include="..\src\win32.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\README.md" />
     <None Include="..\scripts\GenerateAppVersion.ps1" />
     <None Include="..\scripts\Install.ps1" />
     <None Include="..\scripts\post-build.bat" />

@@ -91,6 +91,10 @@ Diff the address: ```0x0000027B10F5EDE4 - 0x0000027B10F5E70E = 1750```
 
 IF NOT RUNNNIG AS ADMIN, Some Process Are Not Accessible! If you cannot read a process memory, open a shell as administrator!
 
+#### Auao-Elecate 
+
+You can use ```-e``` to auto -elevate privileges.
+
 --------------------------------
 
 

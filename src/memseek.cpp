@@ -67,6 +67,9 @@ void banner() {
 	logmsgn("\n%s v%s - processes memory scan tool\n", name_str.c_str(), verstr.c_str());
 	logmsgn("copyright (C) 1999-2023  Guillaume Plante\n");
 	logmsgn("built on %s, %s\n\n", __TIMESTAMP__, platform_str.c_str());
+#ifdef ENABLE_REGEX_SUPPORT
+	logmsgn("with regex support\n");
+#endif
 }
 
 bool IsRunningAsAdmin()
