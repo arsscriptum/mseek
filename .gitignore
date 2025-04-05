@@ -6,7 +6,7 @@
 .vs/
 .vs/**
 
-vs/memgrep-vs2019.sln
+*.sln
 
 bin/
 bin/**
