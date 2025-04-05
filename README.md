@@ -54,53 +54,52 @@ mseek.exe <-s string> <-p PID | -n PROCESSNAME | -i FILE> [options]
 
 ## 💡 Examples
 
-1. Search for a string in a specific process <sup>[1](#ref1)</sup>
+1. Search for a string in a specific process using process name <sup>[1](#ref1)</sup>
 
 ```sh
 mseek.exe -n fsvpnservice_64.exe -s "<key>" 
 ```
-1. Search for a string in a specific process, DUMP DATA <sup>[2](#ref1)</sup>
+2. Search for a string in a specific process using process id <sup>[2](#ref1)</sup>
 
 ```sh
-mseek.exe -n fsvpnservice_64.exe -s "<key>" -x
+mseek.exe -pid 2476 -s "<key>" 
 ```
-2. Search for a string in a specific process, DUMP DATA 2 <sup>[3](#ref2)</sup>
 
-```sh
-mseek.exe -p 2774 -s "<key>"
-```
-3. Search for a string, print 200 bytes **after** found instance <sup>[4](#ref3)</sup>
-Get the address: **0x0000027B10F5E70E**
+3. Search for a string, print 200 bytes **after** found instance <sup>[3](#ref2)</sup>
+```Get the address: 0x0000027B10F5E70E```
 ```sh
 mseek.exe -n fsvpnservice_64.exe -s "<key>" -x -a 200
 ```
-4. Search for a string, print 100 bytes **before** found instance <sup>[5](#ref4)</sup>
-Get the address: **0x0000027B10F5EDE4**
+4. Search for a string, print 100 bytes **before** found instance <sup>[4](#ref3)</sup>
+```Get the address: 0x0000027B10F5EDE4```
 ```sh
 mseek.exe -n fsvpnservice_64.exe -s "<key>" -x -b 100
 ```
 5. Get Delta Memory using addresses <sup>[5](#ref4)</sup>
+
+Diff the address: ```0x0000027B10F5EDE4 - 0x0000027B10F5E70E = 1750```
+
 6. Search for a string, print 1750 bytes **after** found instance, output in file, **printable charcaters only** <sup>[6](#ref5)</sup>
 
+--------------------------------
 
 ## 📝 License
 
 This software is provided as-is for educational and forensic analysis purposes. Use responsibly.
 
-
-> Created by [Guillaume Plante](guillaumeplante.qc@gmail.com)
-> [mseek](https://github.com/arsscriptum/mseek) has been helping developers and analysts dig into memory since 1999.
-
+--------------------------------
 
 <p align="center">
   <img src="img/logo.png" alt="Banner" style="max-width: 100%;">
 </p>
 
 
+> Created by [Guillaume Plante](guillaumeplante.qc@gmail.com)
+<br>
+> [mseek](https://github.com/arsscriptum/mseek) has been helping developers and analysts dig into memory since 1999.
 
 
-
- -------------------------------
+--------------------------------
 
 <a id="ref1"></a> [1] 
 
@@ -110,7 +109,7 @@ This software is provided as-is for educational and forensic analysis purposes. 
 
 <a id="ref2"></a>[2] 
 
-![2](img/example2.png)
+![2](img/memseek.png)
 
 -------------------------------
 
