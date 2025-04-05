@@ -96,7 +96,9 @@ This software is provided as-is for educational and forensic analysis purposes. 
 
 > Created by [Guillaume Plante](guillaumeplante.qc@gmail.com)
 <br>
-> [mseek](https://github.com/arsscriptum/mseek) has been helping developers and analysts dig into memory since 1999.
+<br>
+
+[mseek](https://github.com/arsscriptum/mseek) has been helping developers and analysts dig into memory since 2022.
 
 
 --------------------------------
