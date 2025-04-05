@@ -103,6 +103,8 @@
     <ClCompile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">stdcpp17</LanguageStandard>
     </ClCompile>
     <Manifest>
       <AdditionalManifestFiles Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ProjectRoot)resources\modern_style.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
@@ -128,6 +130,8 @@
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
     <ClCompile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='Release|x64'">stdcpp17</LanguageStandard>
     </ClCompile>
     <Manifest>
       <AdditionalManifestFiles Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ProjectRoot)resources\modern_style.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>
@@ -157,6 +161,8 @@ $(ProjectRoot)scripts\post-build.bat</Command>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='ReleaseUnicode'">
     <ClCompile>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='ReleaseUnicode|Win32'">stdcpp17</LanguageStandard>
+      <LanguageStandard Condition="'$(Configuration)|$(Platform)'=='ReleaseUnicode|x64'">stdcpp17</LanguageStandard>
     </ClCompile>
     <Manifest>
       <AdditionalManifestFiles Condition="'$(Configuration)|$(Platform)'=='ReleaseUnicode|x64'">$(ProjectRoot)resources\modern_style.manifest %(AdditionalManifestFiles)</AdditionalManifestFiles>

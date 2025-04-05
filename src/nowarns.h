@@ -28,8 +28,10 @@
 #pragma  warning( disable: 4619 )   // there is no warning number 'XXXX'
 #pragma  warning( disable: 4668 )   // XXX is not defined as a preprocessor macro
 #pragma  warning( disable: 4189 )
+#pragma  warning( disable: 4311 )
 #pragma  warning( disable: 4100 )
 #pragma  warning( disable: 4477 )
+#pragma  warning( disable: 4005 )
 #pragma  warning( disable: 4245 )
 // The following are pure sillywarnings:
 #pragma warning( disable: 4061 )    // enum value is not *explicitly* handled in switch

@@ -3,7 +3,7 @@
 //  version.cpp
 //
 //==============================================================================
-//  automatically generated on Saturday, April 5, 2025 0:54
+//  automatically generated on Saturday, April 5, 2025 2:14
 //==============================================================================
 
 #include "stdafx.h"
@@ -16,12 +16,12 @@ unsigned int mseek::version::minor  = 2;
 unsigned int mseek::version::build  = 0;
 unsigned int mseek::version::rev    = release;
 std::string  mseek::version::sha    = "master";
-std::string  mseek::version::branch = "ac37ca0f";
+std::string  mseek::version::branch = "320586e6";
 #else
 unsigned int mseek::version::major  = 1;
 unsigned int mseek::version::minor  = 2;
 unsigned int mseek::version::build  = 0;
-unsigned int mseek::version::rev    = 111;
+unsigned int mseek::version::rev    = 147;
 std::string  mseek::version::sha    = "master";
-std::string  mseek::version::branch = "ac37ca0f";
+std::string  mseek::version::branch = "320586e6";
 #endif // _RELEASE

@@ -17,7 +17,7 @@
 #include <wtypes.h>
 
 extern bool g_ColoredOutput;
-
+extern bool g_forceNoColors;
 void logmsgn(const char* format, ...)
 {
 	if (g_ColoredOutput) {
@@ -40,7 +40,7 @@ void logmsgn(const char* format, ...)
 
 void logmsg(const char* format, ...)
 {
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stdout, "\033[36m[i] \033[0m");
 	}
@@ -49,9 +49,38 @@ void logmsg(const char* format, ...)
 	}
 
 
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stdout, "\033[97m");
+	}
+
+
+	// Handle the rest of the formatted message
+	va_list args;
+	va_start(args, format);
+	vfprintf(stdout, format, args);
+	va_end(args);
+
+	if (g_ColoredOutput) {
+		// Reset console color
+		fprintf(stdout, "\033[0m");
+	}
+}
+
+void logmsgext(const char* format, ...)
+{
+	if (g_ColoredOutput && !g_forceNoColors) {
+		// Set console text color to red (ANSI escape sequence)
+		fprintf(stdout, "\033[37m[memory] \033[0m");
+	}
+	else {
+		fprintf(stdout, "[memory] ");
+	}
+
+
+	if (g_ColoredOutput && !g_forceNoColors) {
+		// Set console text color to red (ANSI escape sequence)
+		fprintf(stdout, "\033[93m");
 	}
 
 
@@ -69,17 +98,24 @@ void logmsg(const char* format, ...)
 void logsuccess(const char* format, ...)
 {
 	// Set console text color to red (ANSI escape sequence)
-	fprintf(stdout, "\033[32m[done] \033[0m");
+	if (g_forceNoColors) {
+		fprintf(stdout, "[done] ");
+	}
+	else {
+		fprintf(stdout, "\033[32m[done] \033[0m");
+		fprintf(stdout, "\033[97m");
+	}
 	
-	fprintf(stdout, "\033[97m");
 	
 	// Handle the rest of the formatted message
 	va_list args;
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);
-
-	fprintf(stdout, "\033[0m");
+	if (!g_forceNoColors) {
+		fprintf(stdout, "\033[0m");
+	}
+	
 }
 
 
@@ -87,16 +123,16 @@ void loghighlight(const char* format, ...)
 {
 	// Set console text color to red (ANSI escape sequence)
 
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		fprintf(stdout, "\033[5;31;44m[I]\033[0m");
 	}
 	else {
-		fprintf(stdout, "\033[5m[I] \033[0m");
+		fprintf(stdout, "[I] ");
 	}
 
 
 
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		fprintf(stdout, " \033[3;33m");
 	}
 
@@ -105,8 +141,10 @@ void loghighlight(const char* format, ...)
 	va_start(args, format);
 	vfprintf(stdout, format, args);
 	va_end(args);
-
-	fprintf(stdout, "\033[0m");
+	if (!g_forceNoColors) {
+		fprintf(stdout, "\033[0m");
+	}
+	
 }
 
 
@@ -114,12 +152,14 @@ void loghighlight(const char* format, ...)
 
 void logwarn(const char* format, ...)
 {
+	if (g_forceNoColors) {
+		fprintf(stderr, "[warn] ");
+	}
+	else {
+		fprintf(stderr, "\033[31m[warn] \033[0m");
+		fprintf(stderr, "\033[33m");
+	}
 	// Set console text color to red (ANSI escape sequence)
-	fprintf(stderr, "\033[31m[warn] \033[0m");
-
-
-
-	fprintf(stderr, "\033[33m");
 
 	// Handle the rest of the formatted message
 	va_list args;
@@ -127,13 +167,15 @@ void logwarn(const char* format, ...)
 	vfprintf(stderr, format, args);
 	va_end(args);
 
-	fprintf(stderr, "\033[0m");
+	if (!g_forceNoColors) {
+		fprintf(stdout, "\033[0m");
+	}
 }
 
 
 void logerror(const char* format, ...)
 {
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stderr, "\033[31m[!] \033[0m");
 	}
@@ -142,7 +184,7 @@ void logerror(const char* format, ...)
 	}
 
 
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stderr, "\033[33m");
 	}
@@ -153,7 +195,7 @@ void logerror(const char* format, ...)
 	vfprintf(stderr, format, args);
 	va_end(args);
 
-	if (g_ColoredOutput) {
+	if (g_ColoredOutput && !g_forceNoColors) {
 		// Reset console color
 		fprintf(stderr, "\033[0m");
 	}

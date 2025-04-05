@@ -62,6 +62,7 @@ inline EndOfLineEscapeStreamScope operator<<(std::ostream& os, const EndOfLineEs
 
 
 void logmsgn(const char* format, ...);
+void logmsgext(const char* format, ...);
 void logmsg(const char* format, ...);
 void loghighlight(const char* format, ...);
 void logerror(const char* format, ...);

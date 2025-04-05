@@ -70,7 +70,7 @@ public:
         return instance;
     }
 
-    void Initialize(bool dumpHex, bool printableOnly, bool suppress, DWORD slipBefore, DWORD slipAfter);
+    void Initialize(bool dumpHex, bool printableOnly, bool suppress, DWORD slipBefore, DWORD slipAfter,bool memInfo);
 
     // Public API
     void SearchInAllProcess(bool bUseRegex, bool bReadable, bool bASCII, bool bUNICODE, const char* strString, bool outputToFile, std::string outputFile);
@@ -96,6 +96,7 @@ private:
         _Suppress(false),
         _FileOpenForWriting(false),
         _PrintableOnly(false),
+        _PrintMemoryInfo(false),
         _SlipBefore(0),
         _SlipAfter(0)
     {}
@@ -107,6 +108,7 @@ private:
     CMemUtils(CMemUtils&&) = delete;
     CMemUtils& operator=(CMemUtils&&) = delete;
 
+    void PrintMemoryBasicInformation(const MEMORY_BASIC_INFORMATION& mbi);
     int ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter);
 
     // Member variables
@@ -117,4 +119,5 @@ private:
     DWORD  _SlipAfter;
     bool _FileOpenForWriting;
     bool _PrintableOnly;
+    bool _PrintMemoryInfo;
 };

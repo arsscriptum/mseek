@@ -25,6 +25,7 @@ memgrep a tool to grep accross processes on Windows
 
 bool g_ColoredOutput = false;
 bool g_bSuppress = false;
+bool g_forceNoColors = false;
 
 typedef enum ESearchInput {
 	ESINPUT_NOTSET,
@@ -65,11 +66,12 @@ void banner() {
 	std::string name_str = "mseek32.exe";
 #endif
 	logmsgn("\n%s v%s - processes memory scan tool\n", name_str.c_str(), verstr.c_str());
-	logmsgn("copyright (C) 1999-2023  Guillaume Plante\n");
-	logmsgn("built on %s, %s\n\n", __TIMESTAMP__, platform_str.c_str());
 #ifdef ENABLE_REGEX_SUPPORT
 	logmsgn("with regex support\n");
 #endif
+	logmsgn("copyright (C) 1999-2023  Guillaume Plante\n");
+	logmsgn("built on %s, %s\n\n", __TIMESTAMP__, platform_str.c_str());
+
 }
 
 bool IsRunningAsAdmin()
@@ -93,18 +95,6 @@ bool IsRunningAsAdmin()
 	return isAdmin == TRUE;
 }
 
-//
-// Function	: PrintHelp
-// Role		: 
-// Notes	: 
-// 
-
-
-//
-// Function	: _tmain
-// Role		: Entry point
-// Notes	: 
-// 
 
 bool EnableSeImpersonatePrivilege()
 {
@@ -133,11 +123,24 @@ bool EnableSeImpersonatePrivilege()
 	return GetLastError() == ERROR_SUCCESS;
 }
 
+void exit_error(int errorCode, bool wait=false, const char* message = nullptr)
+{
+	if (message) {
+		logerror("exit_error %d: %s\n", errorCode, message);
+	}
+	else {
+		logerror("exit_error %d\n", errorCode);
+	}
+	
+	if (wait) {
+		Sleep(3000);
+	}
+	exit(errorCode);
+}
 
 int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
-	
-	bool    onlyReadable = false;
+	bool  sleepOnExit = false;
 	char	strLine[1024] = { 0 };
 	DWORD	dwPID = 0;
 	bool    outputToFile = false;
@@ -181,6 +184,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optHelp({ "-h", "--help" }, "Show help message", false, cmdlineOptTypes::Help);
 	SCmdlineOptValues optInputFile({ "-i", "--input" }, "Input file for search strings", true, cmdlineOptTypes::InputFile);
 	SCmdlineOptValues optListAll({ "-l", "--list" }, "Search all processes for the string", false, cmdlineOptTypes::ListAll);
+	SCmdlineOptValues optMemoryInfo({ "-m", "--meminfo" }, "Print Extended Memory Info", false, cmdlineOptTypes::MemoryInfo);
 	SCmdlineOptValues optProcessName({ "-n", "--name" }, "Search specific process: use process name", true, cmdlineOptTypes::ProcName);
 	SCmdlineOptValues optOutputFile({ "-o", "--out" }, "Output matching memory blocks to a file (used with -x)", true, cmdlineOptTypes::OutputFile);
 	SCmdlineOptValues optProcessID({ "-p", "--pid" }, "Search specific process: use process ID", true, cmdlineOptTypes::ProcID);
@@ -198,6 +202,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	inputParser->addOption(optColor);
 	inputParser->addOption(optHelp);
 	inputParser->addOption(optElevate);
+	inputParser->addOption(optMemoryInfo);
+	
 	
 	inputParser->addOption(optInputFile);
 	inputParser->addOption(optListAll);
@@ -226,7 +232,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	bool isVerboseMode = inputParser->isSet(optVerbose);
 	bool isUnicodeMode = inputParser->isSet(optUnicode);
 	bool bElevatePrivileges = inputParser->isSet(optElevate);
-	
+	bool extMemInfo = inputParser->isSet(optMemoryInfo);
 
 	if (inputParser->get_option_argument(optAfter, afterBytes)) {
 		dwSlipAfter = atoi(afterBytes.c_str());
@@ -286,32 +292,44 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		usage(inputParser);
 		return 0;
 	}
-	EnableSeImpersonatePrivilege();
+	
 	if (!IsRunningAsAdmin()) {
 		if (bElevatePrivileges) {
+			EnableSeImpersonatePrivilege();
 			char** argn = (char**)C::Convert::allocate_argn(argc, argv);
 			C::Process::ElevateNow(argc, argn, NULL);
 			//C::Process::LaunchElevatedAndCapture(argc, argn, NULL);
-			
+			return 0;
 		}
 		else {
-			logwarn("NOT RUNNNIG AS ADMIN. Som Process Are Not Accessible!");
+			logwarn("user doesn't have administrator privileges. some process are not accessible!\n");
 		}
 		
 	}
+	else {
+		logmsg("execution with administrator privileges!\n");
+		// running as admin
+		if (bElevatePrivileges) {
+			logwarn("execution with administrator privileges, user specified '-e' : automatic elevation detected!\n");
+			logmsg("sleeping 5 seconds on program exit\n");
+			g_ColoredOutput = false;
+			g_forceNoColors = true;
+			sleepOnExit = true;
+		}
+	}
 
 	if (g_bSuppress && isVerboseMode) {
-		logmsg("Warning: Quiet and Verbose: Verbose superceed Quiet...");
+		logmsg("Warning: Quiet and Verbose: Verbose superceed Quiet...\n");
 		g_bSuppress = false;
 	}
 	
 	if (searchInput == ESINPUT_NOTSET) {
-		logerror(" Must use either -s (search string) or -i (file input)\n");
+		logerror("Must use either -s (search string) or -i (file input)\n");
 		usage(inputParser);
-		return -1;
+		exit_error(-1, sleepOnExit);
 	}
 
-	CMemUtils::Get().Initialize(bDumpHex, printableOnly,g_bSuppress, dwSlipBefore, dwSlipAfter);
+	CMemUtils::Get().Initialize(bDumpHex, printableOnly,g_bSuppress, dwSlipBefore, dwSlipAfter, extMemInfo);
 
 
 #ifdef _DEBUG_CMDLINE
@@ -369,15 +387,16 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		bool processFound = CMemUtils::Get().GetProcessPidFromName(procName, foundPid);
 		if (!processFound) {
 			logerror("cannot find process \"%s\"\n", procName.c_str());
-			return -1;
+			exit_error(-1, sleepOnExit);
 		}
 		else {
 			logmsg("found process %s: pid %d\n", procName.c_str(), foundPid);
 			
 			logmsg("checkng VM_READ access on process \"%s\" ( id %d )\n", procName.c_str(), foundPid);
 			if (!CMemUtils::Get().HasVMReadAccess(foundPid)) {
-				logerror("no VM_READ access on process \"%s\" ( id %d )\n", procName.c_str(), foundPid);
-				return -1;
+				logerror("permission error! no VM_READ access on process \"%s\" ( id %d )\n", procName.c_str(), foundPid);
+				logerror("restart as admin, or try - e argument\n");
+				exit_error(-1, sleepOnExit);
 			}
 			else {
 				dwPID = foundPid;
@@ -390,17 +409,18 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		bool processFound = CMemUtils::Get().GetProcessNameFromPID(dwPID, procName);
 		if (!processFound) {
 			logerror("cannot find process with id %d\n", dwPID);
-			return -1;
+			exit_error(-1, sleepOnExit);
 		}
 		logmsg("checking VM_READ access on process \"%s\" (pid %d) \n", procName.c_str(), dwPID);
 		if (!CMemUtils::Get().HasVMReadAccess(dwPID)) {
-			logerror("no VM_READ access on process \"%s\" (%d)\n", procName.c_str(), dwPID);
-			return -1;
+			logerror("permission error! no VM_READ access on process \"%s\" ( id %d )\n", procName.c_str(), dwPID);
+			logerror("restart as admin, or try - e argument\n");
+			exit_error(-1, sleepOnExit);
 		}
 	}
 	else {
 		logerror( " Must search by process name or process id.\n");
-		return -1; // or handle error appropriately
+		exit_error(-1, sleepOnExit);// or handle error appropriately
 	}
 
 
@@ -410,7 +430,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	}
 	else {
 		logerror("ERROR: Not Specified process to search in!\n");
-		return -1; // or handle error appropriately
+		exit_error(-1, sleepOnExit);// or handle error appropriately
 	}
 
 
@@ -437,9 +457,11 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		}
 		if (dwSlipBefore > 0) {
 			logerror(" -b needs to be used with -x!\n");
+			return -1;
 		}
 		if (dwSlipAfter > 0) {
 			logerror(" -a needs to be used with -x!\n");
+			return -1;
 		}
 	}
 
@@ -447,18 +469,18 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		true,                    // bASCII
 		isUnicodeMode,           // bUNICODE
 		searchString.c_str(),               // strString
-		onlyReadable,            // bReadable
+		printableOnly,            // bReadable
 		outputFile.c_str(),          // strOutFileName (optional)
 		false,                   // bFileOpenForWriting (default, as before)
 		eMemoryTypeFilter,       // etypeFilter
-		false                // bIsRegexPattern
+		useRegex                // bIsRegexPattern
 	);
 
-
+	int numHits = 0;
 	if (searchInput == ESINPUT_STRING){
 		logmsg( "searching pattern '%s'\n", searchString.c_str());
 		
-		int numHits = CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
+		numHits = CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
 		logsuccess("found %d hits for %s\n", numHits, filter.strString);
 		
 	}else if(searchInput == ESINPUT_FILE) {
@@ -474,13 +496,17 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 
 			logmsg("searching pattern '%s' from \"%s\"\n",strLine,inputFile.c_str());
 			filter.strString = strLine;
-			int numHits = CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
+			numHits += CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
 			logsuccess("found %d hits for \"%s\"\n", numHits, strLine);
 		}
 		fclose ( fileStrings );
 	}else{
 		if(!g_bSuppress) logerror("Unknown error!\n");
-		return -1;
+		exit_error(-1, sleepOnExit);
+	}
+
+	if (sleepOnExit) {
+		Sleep(5000);
 	}
 	
 	

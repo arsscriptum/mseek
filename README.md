@@ -81,6 +81,13 @@ Diff the address: ```0x0000027B10F5EDE4 - 0x0000027B10F5E70E = 1750```
 
 6. Search for a string, print 1750 bytes **after** found instance, output in file, **printable charcaters only** <sup>[6](#ref5)</sup>
 
+7. Search for a **REGEX PATTERN**, in **PRIVATE** memory, output in file, **printable charcaters only** <sup>[7](#ref6)</sup>
+*Looking for a GUID using REGEX PATTERN* ```"\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}"```
+
+```
+mseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
+```
+
 --------------------------------
 
 ### 32bit Version Build in Win32 Configuration
@@ -94,6 +101,7 @@ IF NOT RUNNNIG AS ADMIN, Some Process Are Not Accessible! If you cannot read a p
 #### Auao-Elecate 
 
 You can use ```-e``` to auto -elevate privileges.
+
 
 --------------------------------
 
@@ -154,3 +162,8 @@ This software is provided as-is for educational and forensic analysis purposes. 
 ![6](img/example1.png)
 
 -------------------------------
+
+<a id="ref5"></a>[7] 
+<a href="img/regex.gif" target="_blank">
+  <img src="img/regex.gif" alt="regex" style="width:600px;">
+</a>

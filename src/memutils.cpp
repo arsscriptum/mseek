@@ -26,15 +26,17 @@
 #include <vector>
 #include <tlhelp32.h>
 #include <algorithm>
+#include <string_view>
 
 extern bool _Suppress;
 
-void CMemUtils::Initialize(bool dumpHex, bool printableOnly,bool suppress, DWORD slipBefore, DWORD slipAfter) {
+void CMemUtils::Initialize(bool dumpHex, bool printableOnly,bool suppress, DWORD slipBefore, DWORD slipAfter,bool meminfo) {
 	_DumpHex = dumpHex;
 	_Suppress = suppress;
 	_SlipBefore = slipBefore;
 	_SlipAfter = slipAfter;
 	_PrintableOnly = printableOnly;
+	_PrintMemoryInfo = meminfo;
 }
 
 
@@ -67,46 +69,103 @@ EMemoryType CMemUtils::GetMemType(MEMORY_BASIC_INFORMATION memMeminfo)
 	}
 }
 
+void CMemUtils::PrintMemoryBasicInformation(const MEMORY_BASIC_INFORMATION& mbi) {
+	printf("=== Memory Basic Information ===\n");
+	printf("Base Address        : %p\n", mbi.BaseAddress);
+	printf("Allocation Base     : %p\n", mbi.AllocationBase);
+	printf("Region Size         : %zu bytes (%.2f KB)\n", mbi.RegionSize, mbi.RegionSize / 1024.0);
+
+#ifdef _WIN64
+	printf("Partition ID        : %hu\n", mbi.PartitionId);
+#endif
+
+	// Allocation Protect
+	printf("Allocation Protect  : 0x%08X - ", mbi.AllocationProtect);
+	switch (mbi.AllocationProtect) {
+	case PAGE_READONLY: printf("PAGE_READONLY\n"); break;
+	case PAGE_READWRITE: printf("PAGE_READWRITE\n"); break;
+	case PAGE_EXECUTE: printf("PAGE_EXECUTE\n"); break;
+	case PAGE_EXECUTE_READ: printf("PAGE_EXECUTE_READ\n"); break;
+	case PAGE_EXECUTE_READWRITE: printf("PAGE_EXECUTE_READWRITE\n"); break;
+	case PAGE_NOACCESS: printf("PAGE_NOACCESS\n"); break;
+	default: printf("Unknown\n"); break;
+	}
+
+	// State
+	printf("State               : 0x%08X - ", mbi.State);
+	switch (mbi.State) {
+	case MEM_COMMIT: printf("MEM_COMMIT\n"); break;
+	case MEM_RESERVE: printf("MEM_RESERVE\n"); break;
+	case MEM_FREE: printf("MEM_FREE\n"); break;
+	default: printf("Unknown\n"); break;
+	}
+
+	// Protection
+	printf("Protect             : 0x%08X - ", mbi.Protect);
+	switch (mbi.Protect) {
+	case PAGE_READONLY: printf("PAGE_READONLY\n"); break;
+	case PAGE_READWRITE: printf("PAGE_READWRITE\n"); break;
+	case PAGE_EXECUTE: printf("PAGE_EXECUTE\n"); break;
+	case PAGE_EXECUTE_READ: printf("PAGE_EXECUTE_READ\n"); break;
+	case PAGE_EXECUTE_READWRITE: printf("PAGE_EXECUTE_READWRITE\n"); break;
+	case PAGE_NOACCESS: printf("PAGE_NOACCESS\n"); break;
+	default: printf("Unknown\n"); break;
+	}
+
+	// Type
+	printf("Type                : 0x%08X - ", mbi.Type);
+	switch (mbi.Type) {
+	case MEM_IMAGE: printf("MEM_IMAGE\n"); break;
+	case MEM_MAPPED: printf("MEM_MAPPED\n"); break;
+	case MEM_PRIVATE: printf("MEM_PRIVATE\n"); break;
+	default: printf("Unknown or not defined\n"); break;
+	}
+
+	printf("================================\n");
+}
+
+
+
 void CMemUtils::PrintMemInfo(MEMORY_BASIC_INFORMATION memMeminfo)
 {
 
 	switch (memMeminfo.AllocationProtect)
 	{
 	case PAGE_EXECUTE:
-		fprintf(stdout, "[  x  ]");
+		logmsgext("access: [  x  ]\n");
 		break;
 	case PAGE_EXECUTE_READ:
-		fprintf(stdout, "[r x  ]");
+		logmsgext("access: [r x  ]\n");
 		break;
 	case PAGE_EXECUTE_READWRITE:
-		fprintf(stdout, "[rwx  ]");
+		logmsgext("access: [rwx  ]\n");
 		break;
 	case PAGE_EXECUTE_WRITECOPY:
-		fprintf(stdout, "[ wxc ]");
+		logmsgext("access: [ wxc ]\n");
 		break;
 	case PAGE_NOACCESS:
-		fprintf(stdout, "[     ]");
+		logmsgext("access: [     ]\n");
 		break;
 	case PAGE_READONLY:
-		fprintf(stdout, "[r    ]");
+		logmsgext("access: [r    ]\n");
 		break;
 	case PAGE_READWRITE:
-		fprintf(stdout, "[rw   ]");
+		logmsgext("access: [rw   ]\n");
 		break;
 	case PAGE_WRITECOPY:
-		fprintf(stdout, "[ w c ]");
+		logmsgext("access: [ w c ]\n");
 		break;
 	}
 
 	switch (memMeminfo.Type) {
 	case MEM_IMAGE:
-		fprintf(stdout, " - image\n");
+		logmsgext("type MEM_IMAGE\n");
 		break;
 	case MEM_MAPPED:
-		fprintf(stdout, " - mapped\n");
+		logmsgext("type MEM_MAPPED\n");
 		break;
 	case MEM_PRIVATE:
-		fprintf(stdout, " - private\n");
+		logmsgext("type MEM_PRIVATE\n");
 		break;
 	}
 }
@@ -305,7 +364,7 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 			logerror("Failed to read process memory %d at %08llx read %llu\n", GetLastError(), lngAddress, szBytesRead);
 		}
 		VirtualFree(strBuffer, szSize, MEM_RELEASE);
-		return -1;
+		return 0;
 	}
 
 #ifdef ENABLE_REGEX_SUPPORT
@@ -314,15 +373,15 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 #pragma message ("=================================")
 	if (filter.bIsRegexPattern) {
 		try {
-			std::string bufferAsString(reinterpret_cast<const char*>(strBuffer), szBytesRead);
-			std::regex pattern(filter.strString); // assumes valid regex pattern
+			std::string_view bufferView(reinterpret_cast<const char*>(strBuffer), szBytesRead);
+			std::regex pattern(filter.strString, std::regex::ECMAScript | std::regex::optimize);
 
-			auto begin = bufferAsString.cbegin();
-			auto end = bufferAsString.cend();
-			std::smatch match;
+			std::cregex_iterator it(bufferView.data(), bufferView.data() + bufferView.size(), pattern);
+			std::cregex_iterator end;
 
-			while (std::regex_search(begin, end, match, pattern)) {
-				size_t matchPos = match.position(0) + std::distance(bufferAsString.cbegin(), begin);
+			while (it != end) {
+				const std::cmatch& match = *it;
+				size_t matchPos = match.position(0);
 				const char* matchAddress = reinterpret_cast<const char*>(lngAddress + matchPos);
 
 				EMemoryType processMemType = GetMemType(memMeminfo);
@@ -332,6 +391,9 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 					numHits++;
 					loghighlight("Got regex hit for \"%s\" at %p in PID %d page starts at %p\n", filter.strString, (void*)matchAddress, pid, (void*)lngAddress);
 					PrintMemInfo(memMeminfo);
+					if (_PrintMemoryInfo) {
+						PrintMemoryBasicInformation(memMeminfo);
+					}
 
 					if (_DumpHex) {
 						unsigned char* hexStart = strBuffer + matchPos >= strBuffer + _SlipBefore
@@ -347,21 +409,22 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 					}
 				}
 
-				begin += match.position() + match.length();
+				++it;
 			}
 		}
 		catch (const std::regex_error& e) {
 			fprintf(stderr, "[!] Regex error: %s\n", e.what());
-			numHits = -1;
+			numHits = 0;
 		}
 
 		VirtualFree(strBuffer, szSize, MEM_RELEASE);
 		return numHits;
 	}
+
 #else
 	if (filter.bIsRegexPattern) {
 		fprintf(stderr, "[!] Regex Pattern Not upported Yet\n");
-		return -1;
+		return 0;
 	}
 #endif
 	else {
@@ -379,6 +442,9 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 					numHits++;
 					loghighlight("Got ascii hit for %s at %p in PID %d page starts at %p\n", filter.strString, (void*)(lngAddress + intCounter), pid, (void*)lngAddress);
 					PrintMemInfo(memMeminfo);
+					if (_PrintMemoryInfo) {
+						PrintMemoryBasicInformation(memMeminfo);
+					}
 
 					if (_DumpHex) {
 						int length = (int)strlen(filter.strString);

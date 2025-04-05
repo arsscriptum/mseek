@@ -24,7 +24,9 @@
 #if defined(_WIN32) // for Windows (32-bit and 64-bit, this part is common)
 #define PLATFORM_PC
 #ifdef _WIN64 // for Windows (64-bit only)
+#if !defined PLATFORM_WIN64
 #define PLATFORM_WIN64
+#endif
 #else // _WIN64
 #define PLATFORM_WIN32 // for Windows (32-bit only)
 //#pragma message("PLATFORM_WIN32 DETECTED")  

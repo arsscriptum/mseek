@@ -27,6 +27,7 @@ enum class cmdlineOptTypes : uint8_t {
     Elevate,      // -e
     InputFile,      // -i
     ListAll,        // -l
+    MemoryInfo,        // -l
     ProcName,       // -n
     OutputFile,     // -o
     ProcID,         // -p
