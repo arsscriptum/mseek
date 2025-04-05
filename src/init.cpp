@@ -1,4 +1,13 @@
-﻿
+//==============================================================================
+//
+//  init.cpp
+//
+//==============================================================================
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
+//==============================================================================
+
+
 #include "stdafx.h"
 #include <commctrl.h>       // InitCommonControlsEx, etc.
 

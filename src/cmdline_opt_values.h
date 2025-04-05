@@ -1,10 +1,12 @@
 //==============================================================================
 //
-//  cmdline_opt_values.cpp
+//  cmdline_opt_values.h
 //
-//============================================================================
-// Copyright (C)  Guillaume Plante <codegp@icloud.com>
 //==============================================================================
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
+//==============================================================================
+
 
 #ifndef __CMDLINE_OPT_VALUES_H__
 #define __CMDLINE_OPT_VALUES_H__

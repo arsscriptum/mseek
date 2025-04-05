@@ -1,7 +1,12 @@
-/*
-memgrep a tool to grep accross processes on Windows
+//==============================================================================
+//
+//  memseek.cpp
+//
+//==============================================================================
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
+//==============================================================================
 
-*/
 
 #include "stdafx.h"
 #include "targetver.h"
@@ -68,7 +73,7 @@ void banner() {
 	logmsgn("\n%s v%s - processes memory scan tool\n", name_str.c_str(), verstr.c_str());
 #ifdef ENABLE_REGEX_SUPPORT
 	logmsgn("regex support: enabled\n");
-else
+#else
     logmsgn("regex support: disabled\n");
 #endif
 	logmsgn("copyright (C) 1999-2023  Guillaume Plante\n");

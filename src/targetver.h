@@ -1,16 +1,12 @@
+//==============================================================================
+//
+//  targetver.h
+//
+//==============================================================================
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
+//==============================================================================
 
-//==============================================================================
-//
-//   targetver.h
-//
-//   Platform detection and defines
-//   If you wish to build your application for a previous Windows platform, 
-//   include WinSDKVer.h and set the _WIN32_WINNT macro to the platform 
-//   you wish to support before including SDKDDKVer.h.
-//
-//==============================================================================
-//  Copyright (C) Guilaume Plante 2020 <cybercastor@icloud.com>
-//==============================================================================
 
 #ifndef __TARGET_VER_H__
 #define __TARGET_VER_H__

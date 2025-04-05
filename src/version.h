@@ -2,15 +2,11 @@
 //
 //  version.h
 //
-//  this header file must rarely chage. the associated source file version.cpp
-//  is automatically generated everytimne the build is started. 
-//  on windows, the powershell script "scripts/GenerateAppVersion.ps1" is
-//  generating the new version number and the source file.
-//  On Linux, the script "scripts/generate_app_version.sh" does the same.
-// 
 //==============================================================================
-//  automatically generated on Feb 14, 2025 9:15:50 PM
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
 //==============================================================================
+
 
 #include <iostream>
 #include <string>

@@ -1,10 +1,10 @@
-
 //==============================================================================
 //
-//   windows-api-ex.cpp
+//  win32.cpp
 //
 //==============================================================================
-//  Copyright (C) Guilaume Plante 2020 <cybercastor@icloud.com>
+//  Guillaume Plante <codegp@icloud.com>
+//  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
 //==============================================================================
 
 
@@ -25,7 +25,7 @@
 #include <sddl.h>
 #include <AclAPI.h>
 #include <winternl.h>
-// #define USE_VDMDBG // Uncomment this if you don´t wat to use vdmdbg at all
+// #define USE_VDMDBG // Uncomment this if you donï¿½t wat to use vdmdbg at all
 #include <string>
 #include <fstream>
 
