@@ -38,19 +38,19 @@ $VerFileContent = @"
 #include "version.h"
 
 #ifdef _RELEASE
-unsigned int memgrep::version::major  = {1};
-unsigned int memgrep::version::minor  = {2};
-unsigned int memgrep::version::build  = {3};
-unsigned int memgrep::version::rev    = release;
-std::string  memgrep::version::sha    = `"{5}`";
-std::string  memgrep::version::branch = `"{6}`";
+unsigned int mseek::version::major  = {1};
+unsigned int mseek::version::minor  = {2};
+unsigned int mseek::version::build  = {3};
+unsigned int mseek::version::rev    = release;
+std::string  mseek::version::sha    = `"{5}`";
+std::string  mseek::version::branch = `"{6}`";
 #else
-unsigned int memgrep::version::major  = {1};
-unsigned int memgrep::version::minor  = {2};
-unsigned int memgrep::version::build  = {3};
-unsigned int memgrep::version::rev    = {4};
-std::string  memgrep::version::sha    = `"{5}`";
-std::string  memgrep::version::branch = `"{6}`";
+unsigned int mseek::version::major  = {1};
+unsigned int mseek::version::minor  = {2};
+unsigned int mseek::version::build  = {3};
+unsigned int mseek::version::rev    = {4};
+std::string  mseek::version::sha    = `"{5}`";
+std::string  mseek::version::branch = `"{6}`";
 #endif // _RELEASE
 "@
 

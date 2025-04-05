@@ -3,7 +3,7 @@
 //  version.cpp
 //
 //==============================================================================
-//  automatically generated on Friday, April 4, 2025 22:44
+//  automatically generated on Saturday, April 5, 2025 0:24
 //==============================================================================
 
 #include "stdafx.h"
@@ -11,17 +11,17 @@
 #include "version.h"
 
 #ifdef _RELEASE
-unsigned int memgrep::version::major  = 1;
-unsigned int memgrep::version::minor  = 2;
-unsigned int memgrep::version::build  = 0;
-unsigned int memgrep::version::rev    = release;
-std::string  memgrep::version::sha    = "master";
-std::string  memgrep::version::branch = "f9a51054";
+unsigned int mseek::version::major  = 1;
+unsigned int mseek::version::minor  = 2;
+unsigned int mseek::version::build  = 0;
+unsigned int mseek::version::rev    = release;
+std::string  mseek::version::sha    = "master";
+std::string  mseek::version::branch = "287b256f";
 #else
-unsigned int memgrep::version::major  = 1;
-unsigned int memgrep::version::minor  = 2;
-unsigned int memgrep::version::build  = 0;
-unsigned int memgrep::version::rev    = 80;
-std::string  memgrep::version::sha    = "master";
-std::string  memgrep::version::branch = "f9a51054";
+unsigned int mseek::version::major  = 1;
+unsigned int mseek::version::minor  = 2;
+unsigned int mseek::version::build  = 0;
+unsigned int mseek::version::rev    = 109;
+std::string  mseek::version::sha    = "master";
+std::string  mseek::version::branch = "287b256f";
 #endif // _RELEASE

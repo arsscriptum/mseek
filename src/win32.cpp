@@ -66,7 +66,7 @@ namespace C
 		// allocate argn structure parallel to argv 
 		// argn must be released 
 
-		char ** allocate_argn(int argc, _TCHAR* argv[])
+		char ** allocate_argnw(int argc, _TCHAR* argv[])
 		{
 			char ** l_argn = (char **)malloc(argc * sizeof(char *));
 			for (int idx = 0; idx<argc; idx++)
@@ -76,7 +76,16 @@ namespace C
 
 			return l_argn;
 		}
+		char** allocate_argn(int argc, char* argv[])
+		{
+			char** l_argn = (char**)malloc(argc * sizeof(char*));
+			for (int idx = 0; idx < argc; idx++)
+			{
+				l_argn[idx] = strdup(argv[idx]);
+			}
 
+			return l_argn;
+		}
 		// release argn and its content 
 
 		void release_argn(int argc, char ** nargv)
@@ -2028,8 +2037,169 @@ namespace C
 					return bResult;
 		}
 
+		bool TryDuplicateToken()
+		{
+			HANDLE hToken;
+			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_DUPLICATE | TOKEN_QUERY, &hToken)) {
+				printf("OpenProcessToken failed: %lu\n", GetLastError());
+				return false;
+			}
 
-		void ElevateNow(int argc, TCHAR argv[], TCHAR envp)
+			HANDLE hNewToken = nullptr;
+			if (!DuplicateTokenEx(hToken, MAXIMUM_ALLOWED, nullptr, SecurityImpersonation, TokenImpersonation, &hNewToken)) {
+				DWORD err = GetLastError();
+				if (err == ERROR_NO_TOKEN) {
+					printf("[!] ERROR_NO_TOKEN (1346): Current user does not have impersonation privileges.\n");
+					printf("[!] Run this tool as administrator to access protected processes.\n");
+				}
+				else {
+					printf("DuplicateTokenEx failed: %lu\n", err);
+				}
+				CloseHandle(hToken);
+				return false;
+			}
+
+			// If successful
+			CloseHandle(hNewToken);
+			CloseHandle(hToken);
+			return true;
+		}
+
+
+		HANDLE GetAdminToken()
+		{
+			HANDLE hToken = NULL, hNewToken = NULL;
+
+			if (!OpenProcessToken(GetCurrentProcess(), TOKEN_DUPLICATE | TOKEN_QUERY, &hToken)) {
+				std::wcout << L"OpenProcessToken failed: " << GetLastError() << std::endl;
+				return NULL;
+			}
+
+			TOKEN_ELEVATION_TYPE elevationType;
+			DWORD dwSize;
+			if (!GetTokenInformation(hToken, TokenElevationType, &elevationType, sizeof(elevationType), &dwSize)) {
+				std::wcout << L"GetTokenInformation (elevationType) failed: " << GetLastError() << std::endl;
+				CloseHandle(hToken);
+				return NULL;
+			}
+
+			SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+
+			if (elevationType == TokenElevationTypeLimited)
+			{
+				TOKEN_LINKED_TOKEN linkedToken = {};
+				if (!GetTokenInformation(hToken, TokenLinkedToken, &linkedToken, sizeof(linkedToken), &dwSize)) {
+					std::wcout << L"GetTokenInformation (linked token) failed: " << GetLastError() << std::endl;
+					CloseHandle(hToken);
+					return NULL;
+				}
+
+				HANDLE hLinkedToken = linkedToken.LinkedToken;
+
+				if (!DuplicateTokenEx(hLinkedToken, TOKEN_ALL_ACCESS, &sa, SecurityImpersonation, TokenPrimary, &hNewToken)) {
+					std::wcout << L"DuplicateTokenEx (linked token) failed: " << GetLastError() << std::endl;
+					CloseHandle(hLinkedToken);
+					CloseHandle(hToken);
+					return NULL;
+				}
+
+				CloseHandle(hLinkedToken);
+			}
+			else
+			{
+				if (!DuplicateTokenEx(hToken, TOKEN_ALL_ACCESS, &sa, SecurityImpersonation, TokenPrimary, &hNewToken)) {
+					std::wcout << L"DuplicateTokenEx (non-limited) failed: " << GetLastError() << std::endl;
+					CloseHandle(hToken);
+					return NULL;
+				}
+			}
+
+			CloseHandle(hToken);
+			return hNewToken;
+		}
+
+
+		void LaunchElevatedAndCapture(int argc, TCHAR* argv[], TCHAR* envp[])
+		{
+			HANDLE hRead, hWrite;
+			SECURITY_ATTRIBUTES sa = { sizeof(sa), NULL, TRUE };
+
+			if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+				return;
+
+			SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0); // Parent reads, not inherited
+
+			
+			if (!TryDuplicateToken())
+			{
+				std::wcout << L"Failed to TryDuplicateToken.\n";
+				return;
+			}
+			HANDLE hAdminToken = GetAdminToken();
+			if (!hAdminToken)
+			{
+				std::wcout << L"Failed to get admin token.\n";
+				return;
+			}
+
+			TCHAR szPath[MAX_PATH];
+			GetModuleFileName(NULL, szPath, MAX_PATH);
+
+			
+			// Rebuild parameters
+			WCHAR szParams[1024] = L""; // Use L"" for wide-character strings
+			for (int i = 0; i < argc; ++i) {
+				wcscat_s(szParams, ARRAYSIZE(szParams), L"\"");       // Opening quote
+				wcscat_s(szParams, ARRAYSIZE(szParams), Convert::StringToString(argv[i]));     // Argument
+				wcscat_s(szParams, ARRAYSIZE(szParams), L"\" ");      // Closing quote and space
+			}
+
+
+			STARTUPINFOW si = { sizeof(si) };
+			PROCESS_INFORMATION pi = {};
+			si.dwFlags = STARTF_USESTDHANDLES;
+			si.hStdOutput = hWrite;
+			si.hStdError = hWrite;
+			si.hStdInput = NULL;
+
+			BOOL result = CreateProcessWithTokenW(
+				hAdminToken,
+				LOGON_WITH_PROFILE,
+				NULL,
+				szParams,
+				CREATE_NO_WINDOW,
+				NULL,
+				NULL,
+				&si,
+				&pi
+			);
+
+			CloseHandle(hWrite); // Parent closes write end
+
+			if (!result)
+			{
+				std::wcout << L"Failed to start elevated process.\n";
+				CloseHandle(hRead);
+				return;
+			}
+
+			// Read child output
+			CHAR buffer[256];
+			DWORD bytesRead;
+			while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0)
+			{
+				buffer[bytesRead] = 0;
+				std::cout << buffer;
+			}
+
+			CloseHandle(hRead);
+			CloseHandle(pi.hProcess);
+			CloseHandle(pi.hThread);
+			CloseHandle(hAdminToken);
+		}
+
+
+		void ElevateNow(int argc, TCHAR* argv[], TCHAR* envp[])
 		{
 			BOOL bAlreadyRunningAsAdministrator = FALSE;
 			try
@@ -2042,19 +2212,26 @@ namespace C
 				DWORD dwErrorCode = GetLastError();
 				TCHAR szMessage[256];
 				_stprintf_s(szMessage, ARRAYSIZE(szMessage), _T("Error code returned was 0x%08lx"), dwErrorCode);
-				std::cout << szMessage << std::endl;
+				std::wcout << szMessage << std::endl;
 			}
+
 			if (!bAlreadyRunningAsAdministrator)
 			{
 				TCHAR szPath[MAX_PATH];
 				if (GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath)))
 				{
-					std::cout << "Running under ELEVATION: " << szPath << std::endl;
-					TCHAR szParams[256];
-					_stprintf_s(szParams, ARRAYSIZE(szParams), _T("-u tet"));
-					std::cout << szParams << std::endl;
+					std::wcout << L"Running under ELEVATION: " << szPath << std::endl;
 
-					// Launch itself as admin
+					// Rebuild parameters
+					TCHAR szParams[1024] = _T("");
+					for (int i = 1; i < argc; ++i) {
+						_tcscat_s(szParams, ARRAYSIZE(szParams), _T("\""));
+						_tcscat_s(szParams, ARRAYSIZE(szParams), argv[i]);
+						_tcscat_s(szParams, ARRAYSIZE(szParams), _T("\" "));
+					}
+
+					std::wcout << L"Passing arguments: " << szParams << std::endl;
+
 					SHELLEXECUTEINFO sei = { sizeof(sei) };
 					sei.lpParameters = szParams;
 					sei.fMask = SEE_MASK_FLAG_DDEWAIT | SEE_MASK_NOCLOSEPROCESS;
@@ -2062,19 +2239,23 @@ namespace C
 					sei.lpFile = szPath;
 					sei.hwnd = NULL;
 					sei.nShow = SW_NORMAL;
-					
+
 					if (!ShellExecuteEx(&sei))
 					{
 						DWORD dwError = GetLastError();
 						if (dwError == ERROR_CANCELLED)
 						{
-							// The user refused to allow privileges elevation.
 							std::cout << "End user did not allow elevation" << std::endl;
+						}
+						else
+						{
+							std::wcout << L"ShellExecuteEx failed. Error: " << dwError << std::endl;
 						}
 					}
 				}
 			}
 		}
+
 		// Either returns true (for a retry) or false (success or failure)
 		// Failure: pnbProcesses is 0 and there is no buffer to free
 		// Success: pnbProcesses is greater than 0 and *pprocesses contains a pointer to be freed

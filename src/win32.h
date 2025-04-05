@@ -156,7 +156,8 @@ namespace C
 		// This is for example used for cmdline parsing
 		int wstrlen(_TCHAR * wstr);
 		char * wstrdup(_TCHAR * wSrc);
-		char ** allocate_argn(int argc, _TCHAR* argv[]);
+		char ** allocate_argnw(int argc, _TCHAR* argv[]);
+		char** allocate_argn(int argc, char* argv[]);
 		void release_argn(int argc, char ** nargv);
 
 
@@ -327,13 +328,16 @@ namespace C
 		BOOL GetProcessbyNameOrId(LPTSTR searchstring, PHANDLE phProcess, DWORD rights);
 		DWORD GetProcessSession(HANDLE hProcess);
 		BOOL IsRunAsAdministrator();
-		void ElevateNow(int argc, TCHAR argv[], TCHAR envp);
+		void ElevateNow(int argc, TCHAR* argv[], TCHAR* envp[] = NULL);
 		BOOL EnableRequiredPrivileges();
 		bool FillModuleListPSAPI(TModules& mods, DWORD pid, HANDLE hProcess);
 		bool FillModuleListTH32(C::Process::TModules& modules, DWORD pid);
 		BOOL ListProcessThreads(DWORD dwOwnerPID, TThreads & t);
 		void printError(TCHAR* msg);
 		DWORD GetThreadStartAddress(HANDLE hThread);
+		void LaunchElevatedAndCapture(int argc, TCHAR* argv[], TCHAR* envp[]);
+		HANDLE GetAdminToken();
+		bool TryDuplicateToken();
 	}
 
 	namespace Thread

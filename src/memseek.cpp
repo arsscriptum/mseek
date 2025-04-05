@@ -8,7 +8,7 @@ memgrep a tool to grep accross processes on Windows
 #include "version.h"
 #include "log.h"
 #include "memutils.h"
-
+#include "win32.h"
 #include "cmdline.h"
 
 #include <stdio.h>
@@ -56,7 +56,7 @@ void usage(CmdlineParser* inputParser) {
 }
 
 void banner() {
-	std::string verstr = memgrep::version::GetAppVersion();
+	std::string verstr = mseek::version::GetAppVersion();
 #ifdef PLATFORM_WIN64
 	std::string platform_str = "for 64 bits platform";
 	std::string name_str = "mseek.exe";
@@ -103,7 +103,35 @@ bool IsRunningAsAdmin()
 // Notes	: 
 // 
 
-int _tmain(int argc, _TCHAR* argv[])
+bool EnableSeImpersonatePrivilege()
+{
+	HANDLE hToken;
+	TOKEN_PRIVILEGES tp;
+	LUID luid;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+		return false;
+
+	if (!LookupPrivilegeValue(NULL, SE_IMPERSONATE_NAME, &luid)) {
+		CloseHandle(hToken);
+		return false;
+	}
+
+	tp.PrivilegeCount = 1;
+	tp.Privileges[0].Luid = luid;
+	tp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+
+	if (!AdjustTokenPrivileges(hToken, FALSE, &tp, sizeof(tp), NULL, NULL)) {
+		CloseHandle(hToken);
+		return false;
+	}
+
+	CloseHandle(hToken);
+	return GetLastError() == ERROR_SUCCESS;
+}
+
+
+int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
 	
 	bool    onlyReadable = false;
@@ -130,7 +158,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 
 #ifdef UNICODE
-	char** argn = (char**)Convert::allocate_argn(argc, argv);
+	char** argn = (char**)Convert::allocate_argnw(argc, argv);
 #else
 	char** argn = argv;
 #endif // UNICODE
@@ -247,7 +275,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	}
 
 
-	if (!g_bSuppress) {
+	if (!g_bSuppress) { 
 		banner();
 	}
 
@@ -255,9 +283,18 @@ int _tmain(int argc, _TCHAR* argv[])
 		usage(inputParser);
 		return 0;
 	}
-	
+	EnableSeImpersonatePrivilege();
 	if (!IsRunningAsAdmin()) {
-		logwarn("NOT RUNNNIG AS ADMIN. Som Process Are Not Accessible!");
+		if (bElevatePrivileges) {
+			char** argn = (char**)C::Convert::allocate_argn(argc, argv);
+			C::Process::ElevateNow(argc, argn, NULL);
+			//C::Process::LaunchElevatedAndCapture(argc, argn, NULL);
+			
+		}
+		else {
+			logwarn("NOT RUNNNIG AS ADMIN. Som Process Are Not Accessible!");
+		}
+		
 	}
 
 	if (g_bSuppress && isVerboseMode) {
@@ -321,6 +358,7 @@ int _tmain(int argc, _TCHAR* argv[])
 #endif
 
 	CMemUtils::Get().EnableDebugPrivilege(GetCurrentProcess());
+
 
 	if (searchMode == ESEARCH_PNAME) {
 		logmsg( "validating process name \"%s\"\n", procName.c_str());

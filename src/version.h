@@ -15,7 +15,7 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-namespace memgrep {
+namespace mseek {
 	class version {
 	public:
 		typedef struct sVersionInfo {
