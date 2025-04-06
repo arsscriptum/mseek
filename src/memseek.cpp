@@ -26,6 +26,9 @@
 #include <regex>    // <---- Include this
 #include <cstdio>
 #include <cstdarg>
+#include <inttypes.h>  // for PRIxPTR
+
+#include <cstdint>  // for uintptr_t
 
 
 bool g_ColoredOutput = false;
@@ -145,6 +148,10 @@ void exit_error(int errorCode, bool wait=false, const char* message = nullptr)
 	exit(errorCode);
 }
 
+uintptr_t ConvertStringToPtr(const std::string& str) {
+	return static_cast<uintptr_t>(std::stoull(str.c_str(), nullptr, 16));
+}
+
 int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 {
 	bool  sleepOnExit = false;
@@ -152,6 +159,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	DWORD	dwPID = 0;
 	bool    outputToFile = false;
 	FILE* fileStrings = NULL;
+	int resultsFilterIndex = -1;
+	ULONG_PTR resultsFilterMemoryAddress = 0;
 
 	DWORD dwSlipBefore = 0;
 	DWORD dwSlipAfter = 0;
@@ -168,7 +177,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	std::string procID;
 	std::string searchString;
 	std::string memoryType;
-
+	std::string resultsFilterIndexStr;
+	std::string resultsFilterMemoryAddressStr;
 
 #ifdef UNICODE
 	char** argn = (char**)Convert::allocate_argnw(argc, argv);
@@ -187,6 +197,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optAfter({ "-a", "--after" }, "Print this many bytes after the match in the hex dump (used with -x)", true, cmdlineOptTypes::After);
 	SCmdlineOptValues optBefore({ "-b", "--before" }, "Print this many bytes before the match in the hex dump (used with -x)", true, cmdlineOptTypes::Before);
 	SCmdlineOptValues optColor({ "-c", "--color" }, "Use colored output for better readability", false, cmdlineOptTypes::Color);
+	SCmdlineOptValues optAddress({ "-d", "--address" }, "Specify memory address to search", true, cmdlineOptTypes::Address);
 	SCmdlineOptValues optElevate({ "-e", "--elevate" }, "Elevate Privileges if required", false, cmdlineOptTypes::Elevate);
 	SCmdlineOptValues optHelp({ "-h", "--help" }, "Show help message", false, cmdlineOptTypes::Help);
 	SCmdlineOptValues optInputFile({ "-i", "--input" }, "Input file for search strings", true, cmdlineOptTypes::InputFile);
@@ -201,6 +212,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optMemType({ "-t", "--type" }, "Filter memory regions by type: image, mapped, or private", true, cmdlineOptTypes::MemType);
 	SCmdlineOptValues optUnicode({ "-u", "--unicode" }, "Unicode", false, cmdlineOptTypes::Unicode);
 	SCmdlineOptValues optHexDump({ "-x", "--hexdump" }, "Dump memory as hex when a match is found", false, cmdlineOptTypes::HexDump);
+	SCmdlineOptValues optResultsIndex({ "-y", "--only" }, "Filter results: dump only this results Index", true, cmdlineOptTypes::Index);
 	SCmdlineOptValues optPrintableOnly({ "-z", "--textdump" }, "Output only printable ASCII characters from the matched memory", false, cmdlineOptTypes::PrintableOnly);
 
 	// Add options to the parser
@@ -213,6 +225,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	
 	
 	inputParser->addOption(optInputFile);
+	inputParser->addOption(optAddress);
 	inputParser->addOption(optListAll);
 	inputParser->addOption(optProcessName);
 	inputParser->addOption(optOutputFile);
@@ -225,6 +238,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	inputParser->addOption(optPrintableOnly);
 	inputParser->addOption(optUnicode);
 	inputParser->addOption(optVerbose);
+	inputParser->addOption(optResultsIndex);
+	
 
 	// Evaluate options
 	bool showHelp = inputParser->isSet(optHelp);
@@ -232,22 +247,31 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	g_ColoredOutput = inputParser->isSet(optColor);
 	g_bSuppress = inputParser->isSet(optQuiet);
 
-	bool listAll = inputParser->isSet(optListAll);
-	bool bDumpHex = inputParser->isSet(optHexDump);
-	bool printableOnly = inputParser->isSet(optPrintableOnly);
-	bool useRegex = inputParser->isSet(optRegex);
-	bool isVerboseMode = inputParser->isSet(optVerbose);
-	bool isUnicodeMode = inputParser->isSet(optUnicode);
-	bool bElevatePrivileges = inputParser->isSet(optElevate);
-	bool extMemInfo = inputParser->isSet(optMemoryInfo);
+	bool isOptionSetSpecifiedMemoryAddress = inputParser->isSet(optAddress);
+	bool isOptionSetFilterResultsIndex = inputParser->isSet(optResultsIndex);
+	bool isOptionSetListAllProcesses = inputParser->isSet(optListAll);
+	bool isOptionSetDumpHex = inputParser->isSet(optHexDump);
+	bool isOptionSetPrintableOnly = inputParser->isSet(optPrintableOnly);
+	bool isOptionSetUseRegexPatterns = inputParser->isSet(optRegex);
+	bool isOptionSetVerboseMode = inputParser->isSet(optVerbose);
+	bool isOptionSetUnicodeMode = inputParser->isSet(optUnicode);
+	bool isOptionSetElevatePrivileges = inputParser->isSet(optElevate);
+	bool isOptionSetExtendedMemInfo = inputParser->isSet(optMemoryInfo);
 
 	if (inputParser->get_option_argument(optAfter, afterBytes)) {
 		dwSlipAfter = atoi(afterBytes.c_str());
 	}
-	
 	if (inputParser->get_option_argument(optBefore, beforeBytes)) {
 		dwSlipBefore = atoi(beforeBytes.c_str());
 	}
+	if (inputParser->get_option_argument(optResultsIndex, resultsFilterIndexStr)) {
+		resultsFilterIndex = atoi(resultsFilterIndexStr.c_str());
+	}
+	if (inputParser->get_option_argument(optAddress, resultsFilterMemoryAddressStr)) {
+		resultsFilterMemoryAddress = ConvertStringToPtr(resultsFilterMemoryAddressStr);
+		logmsg("parsing memory address filter 0x%" PRIxPTR "\n", resultsFilterMemoryAddress);
+	}
+
 	
 	
 	if (inputParser->get_option_argument(optInputFile, inputFile)) {
@@ -261,7 +285,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	
 	if (inputParser->get_option_argument(optOutputFile, outputFile)) {
 		outputToFile = true;
-		if (!bDumpHex) {
+		if (!isOptionSetDumpHex) {
 			logerror(" -o needs to be used with -x!\n");
 			return -1;
 		}
@@ -301,7 +325,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	}
 	
 	if (!IsRunningAsAdmin()) {
-		if (bElevatePrivileges) {
+		if (isOptionSetElevatePrivileges) {
 			EnableSeImpersonatePrivilege();
 			char** argn = (char**)C::Convert::allocate_argn(argc, argv);
 			C::Process::ElevateNow(argc, argn, NULL);
@@ -316,7 +340,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	else {
 		logmsg("execution with administrator privileges!\n");
 		// running as admin
-		if (bElevatePrivileges) {
+		if (isOptionSetElevatePrivileges) {
 			logwarn("execution with administrator privileges, user specified '-e' : automatic elevation detected!\n");
 			logmsg("sleeping 5 seconds on program exit\n");
 			g_ColoredOutput = false;
@@ -325,7 +349,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		}
 	}
 
-	if (g_bSuppress && isVerboseMode) {
+	if (g_bSuppress && isOptionSetVerboseMode) {
 		logmsg("Warning: Quiet and Verbose: Verbose superceed Quiet...\n");
 		g_bSuppress = false;
 	}
@@ -336,7 +360,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		exit_error(-1, sleepOnExit);
 	}
 
-	CMemUtils::Get().Initialize(bDumpHex, printableOnly,g_bSuppress, dwSlipBefore, dwSlipAfter, extMemInfo);
+	CMemUtils::Get().Initialize(isOptionSetDumpHex, isOptionSetPrintableOnly,g_bSuppress, dwSlipBefore, dwSlipAfter, isOptionSetExtendedMemInfo);
 
 
 #ifdef _DEBUG_CMDLINE
@@ -440,9 +464,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		exit_error(-1, sleepOnExit);// or handle error appropriately
 	}
 
-
-	if (bDumpHex) {
-		if (printableOnly) {
+	if (isOptionSetDumpHex) {
+		if (isOptionSetPrintableOnly) {
 			logmsg("dumping readable text in memory\n");
 		}else{
 			logmsg("dumping hexadecimal memory data\n");
@@ -456,9 +479,16 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		if (!dwSlipBefore && !dwSlipAfter) {
 			logwarn("using -x to dump data but no byte set with -a or -b\n");
 		}
+		if (isOptionSetFilterResultsIndex) {
+			logmsg("filter results using index %d\n", resultsFilterIndex);
+		}
+		if (isOptionSetSpecifiedMemoryAddress) {
+			logmsg("Parsed address: 0x%016" PRIxPTR "\n", resultsFilterMemoryAddress);
+		}
+		
 	}
 	else {
-		if (printableOnly) {
+		if (isOptionSetPrintableOnly) {
 			logerror(" -z needs to be used with -x!\n");
 			return -1;
 		}
@@ -474,21 +504,27 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 
 	FilterParameters filter(
 		true,                    // bASCII
-		isUnicodeMode,           // bUNICODE
+		isOptionSetUnicodeMode,           // bUNICODE
 		searchString.c_str(),               // strString
-		printableOnly,            // bReadable
+		isOptionSetPrintableOnly,            // bReadable
 		outputFile.c_str(),          // strOutFileName (optional)
 		false,                   // bFileOpenForWriting (default, as before)
 		eMemoryTypeFilter,       // etypeFilter
-		useRegex                // bIsRegexPattern
+		isOptionSetUseRegexPatterns,
+		resultsFilterIndex,
+		resultsFilterMemoryAddress
 	);
 
-	int numHits = 0;
+	bool searchSuccess = true;
 	if (searchInput == ESINPUT_STRING){
 		logmsg( "searching pattern '%s'\n", searchString.c_str());
 		
-		numHits = CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
-		logsuccess("found %d hits for %s\n", numHits, filter.strString);
+		searchSuccess = CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
+		if (!searchSuccess) {
+			logerror("error during memory probe\n");
+			return -1;
+		}
+		logsuccess("found %d hits for %s\n", CMemUtils::Get().GetTotalMatchesCount(), filter.strString);
 		
 	}else if(searchInput == ESINPUT_FILE) {
 	
@@ -503,8 +539,13 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 
 			logmsg("searching pattern '%s' from \"%s\"\n",strLine,inputFile.c_str());
 			filter.strString = strLine;
-			numHits += CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
-			logsuccess("found %d hits for \"%s\"\n", numHits, strLine);
+			searchSuccess = searchSuccess  && CMemUtils::Get().SearchProcessMemory(dwPID,filter, outputToFile, outputFile);
+			if (!searchSuccess) {
+				logerror("error during memory probe\n");
+				return -1;
+			}
+			
+			logsuccess("found %d hits for \"%s\"\n", CMemUtils::Get().GetTotalMatchesCount(), strLine);
 		}
 		fclose ( fileStrings );
 	}else{

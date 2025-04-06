@@ -27,6 +27,8 @@
 #include <tlhelp32.h>
 #include <algorithm>
 #include <string_view>
+#include <inttypes.h>  // for PRIxPTR
+#include <cstdint>  // for uintptr_t
 
 extern bool _Suppress;
 
@@ -37,6 +39,8 @@ void CMemUtils::Initialize(bool dumpHex, bool printableOnly,bool suppress, DWORD
 	_SlipAfter = slipAfter;
 	_PrintableOnly = printableOnly;
 	_PrintMemoryInfo = meminfo;
+	_partialMemoryReads = 0;
+	_totalMatches = 0;
 }
 
 
@@ -241,12 +245,14 @@ bool CMemUtils::EnableDebugPrivilege()
 	return GetLastError() == ERROR_SUCCESS;
 }
 
+void CMemUtils::ResetSearchResults() {
+	_totalMatches = 0;
+	_partialMemoryReads = 0;
+}
 
-
-int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outputToFile, std::string outputFile)
+bool CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool enableOutputToFile, std::string outputFilePath)
 {
 	DWORD dwRet, dwMods;
-	int numHits = 0;
 	HANDLE hProcess;
 	HMODULE hModule[4096];
 	char cProcess[MAX_PATH]; // Process name
@@ -254,6 +260,7 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 	BOOL bIsWow64 = FALSE;
 	BOOL bIsWow64Other = FALSE;
 	DWORD dwRES = 0;
+	bool scanSuccess = true;
 
 	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 	if (hProcess == NULL)
@@ -262,12 +269,12 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 			hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 			if (hProcess == NULL) {
 				if (!_Suppress) logerror("Failed to OpenProcess(%d),%d\n", pid, GetLastError());
-				return -1;
+				return false;
 			}
 		}
 		else {
 			if (!_Suppress) logerror("Failed to OpenProcess(%d),%d\n", pid, GetLastError());
-			return -1;
+			return false;
 		}
 	}
 
@@ -279,7 +286,7 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 		else {
 			if (!_Suppress) logerror("OpenAndGrep(%d),%d\n", pid, GetLastError());
 		}
-		return -1;
+		return false;
 	}
 	dwMods = dwRet / sizeof(HMODULE);
 
@@ -297,7 +304,7 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 	}
 	else {
 		fwprintf(stdout, L"[!] Errot\n");
-		return -1;
+		return false;
 	}
 
 	if (!_Suppress) logmsg("Searching %s - %d\n", cProcess, pid);
@@ -309,14 +316,14 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 	ULONG_PTR addrCurrent = 0;
 	ULONG_PTR lastBase = (-1);
 
-	if (outputToFile && outputFile.length() > 0) {
-		_DumpFile = fopen(outputFile.c_str(), "w");
+	if (enableOutputToFile && outputFilePath.length() > 0) {
+		_DumpFile = fopen(outputFilePath.c_str(), "w");
 		if (!_DumpFile) {
-			logerror("Failed to open file '%s' for writing.\n", outputFile.c_str());
+			logerror("Failed to open file '%s' for writing.\n", outputFilePath.c_str());
 			_DumpFile = nullptr;
 		}
 		else {
-			logmsg("Opened file %s for writing\n", outputFile.c_str());
+			logmsg("Opened file %s for writing\n", outputFilePath.c_str());
 			_FileOpenForWriting = true;
 		}
 	}
@@ -337,7 +344,8 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 		lastBase = (ULONG_PTR)memMeminfo.BaseAddress;
 
 		if (memMeminfo.State == MEM_COMMIT) {
-			numHits += ScanMemory(pid, memMeminfo.RegionSize, (ULONG_PTR)memMeminfo.BaseAddress, hProcess, memMeminfo, filter);
+			scanSuccess = scanSuccess && ScanMemory(pid, memMeminfo.RegionSize, (ULONG_PTR)memMeminfo.BaseAddress, hProcess, memMeminfo, filter);
+
 		}
 
 		addrCurrent += memMeminfo.RegionSize;
@@ -347,25 +355,31 @@ int CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool outpu
 		fflush(_DumpFile);
 		fclose(_DumpFile);
 	}
-	return numHits;
+	return scanSuccess;
 
 }
 
 
-int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter)
+bool CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter)
 {
 	SIZE_T szBytesRead = 0;
-	int numHits = 0;
+	int currentIndex = 0;
+	bool scanSuccess = true;
+	
 	unsigned char* strBuffer = (unsigned char*)VirtualAlloc(0, szSize + 1024, MEM_COMMIT, PAGE_READWRITE);
 	if (strBuffer == NULL) return 0;
 
 	if (ReadProcessMemory(hProcess, (LPVOID)lngAddress, strBuffer, szSize, &szBytesRead) == 0) {
-		if (GetLastError() != 299) {
+		if (GetLastError() == 299) {
+			_partialMemoryReads++;
+		}else{
 			logerror("Failed to read process memory %d at %08llx read %llu\n", GetLastError(), lngAddress, szBytesRead);
-		}
-		VirtualFree(strBuffer, szSize, MEM_RELEASE);
-		return 0;
+			VirtualFree(strBuffer, szSize, MEM_RELEASE);
+			return false;
+		}	
 	}
+	std::string actionShow = "show";
+	std::string actionSkip = "skip";
 
 #ifdef ENABLE_REGEX_SUPPORT
 #pragma message ("=================================")
@@ -383,13 +397,71 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 				const std::cmatch& match = *it;
 				size_t matchPos = match.position(0);
 				const char* matchAddress = reinterpret_cast<const char*>(lngAddress + matchPos);
+				currentIndex = _totalMatches++;
+
+				bool resultsFilterShowThisResult = true;
+
+				if (/*filter.bReadable*/true) {
+					fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
+					fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(matchAddress));
+					fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
+				}
+				if (filter.resultsFilterIndex != -1) {
+					if (filter.resultsFilterIndex == currentIndex) {
+						resultsFilterShowThisResult = true;
+					}
+					else {
+						resultsFilterShowThisResult = false;
+					}
+
+					if (filter.resultsFilterMemoryAddress != 0) {
+						uintptr_t base = static_cast<uintptr_t>(lngAddress);
+						uintptr_t offset = static_cast<uintptr_t>(matchPos);
+						uintptr_t target = filter.resultsFilterMemoryAddress;
+
+						uintptr_t rangeEnd = base + offset;
+
+						// Prevent unsigned overflow
+						if (rangeEnd >= base) {
+							if (target < rangeEnd) {
+								uintptr_t deltaAddresses = rangeEnd - target;
+								int deltaBytes = static_cast<int>(deltaAddresses / 8);
+								_SlipBefore = deltaBytes;
+
+								logmsg("memory address filter 0x%" PRIxPTR
+									" calculated delta address 0x%" PRIxPTR
+									" delta bytes %d, dumping %d bytes before match\n",
+									target, deltaAddresses, deltaBytes, _SlipBefore);
+							}
+							else {
+								uintptr_t deltaAddresses = target - rangeEnd;
+								int deltaBytes = static_cast<int>(deltaAddresses / 8);
+								_SlipAfter = deltaBytes;
+
+								logmsg("memory address filter 0x%" PRIxPTR
+									" calculated delta address 0x%" PRIxPTR
+									" delta bytes %d, dumping %d bytes after match\n",
+									target, deltaAddresses, deltaBytes, _SlipAfter);
+							}
+						}
+					}
+				}
 
 				EMemoryType processMemType = GetMemType(memMeminfo);
-				bool bMatch = (filter.etypeFilter == EMEM_ALL || processMemType == filter.etypeFilter);
+				if (filter.etypeFilter != EMEM_ALL && processMemType != filter.etypeFilter) {
+					resultsFilterShowThisResult = false;
+				}
+				loghighlight("[match %3d] \"%-20s\" (regex) | pid %5d | 0x%016" PRIxPTR " | %-4s\n",
+					currentIndex,
+					filter.strString,
+					pid,
+					static_cast<uintptr_t>(lngAddress + matchPos),
+					resultsFilterShowThisResult?actionShow.c_str() :actionSkip.c_str()
+				);
 
-				if (bMatch) {
-					numHits++;
-					loghighlight("Got regex hit for \"%s\" at %p in PID %d page starts at %p\n", filter.strString, (void*)matchAddress, pid, (void*)lngAddress);
+
+				if (resultsFilterShowThisResult) {
+
 					PrintMemInfo(memMeminfo);
 					if (_PrintMemoryInfo) {
 						PrintMemoryBasicInformation(memMeminfo);
@@ -408,17 +480,17 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 						WriteHexOut(hexStart, (int)maxLen, _DumpFile ? _DumpFile : stdout);
 					}
 				}
-
+				
 				++it;
 			}
 		}
 		catch (const std::regex_error& e) {
 			fprintf(stderr, "[!] Regex error: %s\n", e.what());
-			numHits = 0;
+			scanSuccess = false;
 		}
 
 		VirtualFree(strBuffer, szSize, MEM_RELEASE);
-		return numHits;
+		return scanSuccess;
 	}
 
 #else
@@ -432,35 +504,103 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 		unsigned char* strBufferNow = strBuffer;
 		unsigned char* strBufferEnd = (strBuffer + szSize) - (strlen(filter.strString) + 1);
 		unsigned int intCounter = 0;
-
+		bool resultsFilterShowThisResult = true;
+		
 		while (strBufferNow < strBufferEnd) {
+
 			if (memcmp(filter.strString, strBufferNow, strlen(filter.strString)) == 0) {
-				EMemoryType processMemType = GetMemType(memMeminfo);
-				bool bMatch = (filter.etypeFilter == EMEM_ALL || processMemType == filter.etypeFilter);
+				bool bMatch = true;
+				currentIndex = _totalMatches++;
 
 				if (bMatch) {
-					numHits++;
-					loghighlight("Got ascii hit for %s at %p in PID %d page starts at %p\n", filter.strString, (void*)(lngAddress + intCounter), pid, (void*)lngAddress);
-					PrintMemInfo(memMeminfo);
-					if (_PrintMemoryInfo) {
-						PrintMemoryBasicInformation(memMeminfo);
+
+					if (/*filter.bReadable*/true) {
+						fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
+						fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(lngAddress + intCounter));
+						fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
+					}
+					if (filter.resultsFilterMemoryAddress != 0) {
+						uintptr_t base = static_cast<uintptr_t>(lngAddress);
+						uintptr_t offset = static_cast<uintptr_t>(intCounter);
+						uintptr_t target = filter.resultsFilterMemoryAddress;
+
+						uintptr_t rangeEnd = base + offset;
+
+						if (filter.resultsFilterIndex != -1) {
+							if (filter.resultsFilterIndex == currentIndex) {
+								resultsFilterShowThisResult = true;
+							}
+							else {
+								resultsFilterShowThisResult = false;
+							}
+
+							// Prevent unsigned overflow
+							if (rangeEnd >= base) {
+								if (target < rangeEnd) {
+									uintptr_t deltaAddresses = rangeEnd - target;
+									int deltaBytes = static_cast<int>(deltaAddresses / 8);
+									_SlipBefore = deltaBytes;
+
+									logmsg("memory address filter 0x%" PRIxPTR
+										" calculated delta address 0x%" PRIxPTR
+										" delta bytes %d, dumping %d bytes before match\n",
+										target, deltaAddresses, deltaBytes, _SlipBefore);
+								}
+								else {
+									uintptr_t deltaAddresses = target - rangeEnd;
+									int deltaBytes = static_cast<int>(deltaAddresses / 8);
+									_SlipAfter = deltaBytes;
+
+									logmsg("memory address filter 0x%" PRIxPTR
+										" calculated delta address 0x%" PRIxPTR
+										" delta bytes %d, dumping %d bytes after match\n",
+										target, deltaAddresses, deltaBytes, _SlipAfter);
+								}
+							}
+						}
 					}
 
-					if (_DumpHex) {
-						int length = (int)strlen(filter.strString);
-						unsigned char* hexStart = (strBufferNow >= strBuffer + _SlipBefore) ? strBufferNow - _SlipBefore : strBuffer;
-						int hexLength = length + _SlipBefore + _SlipAfter;
-						if (hexStart + hexLength > strBuffer + szBytesRead) {
-							hexLength = (int)((strBuffer + szBytesRead) - hexStart);
-						}
-						WriteHexOut(hexStart, hexLength, _DumpFile ? _DumpFile : stdout);
+
+					EMemoryType processMemType = GetMemType(memMeminfo);
+					if (filter.etypeFilter != EMEM_ALL && processMemType != filter.etypeFilter) {
+						resultsFilterShowThisResult = false;
 					}
+					
+					loghighlight("[match %3d] \"%-20s\" | pid %5d | 0x%016" PRIxPTR " | %-4s\n",
+						currentIndex,
+						filter.strString,
+						pid,
+						static_cast<uintptr_t>(lngAddress + intCounter),
+						resultsFilterShowThisResult ? actionShow.c_str() : actionSkip.c_str()
+					);
+
+					
+
+					if (resultsFilterShowThisResult) {
+						PrintMemInfo(memMeminfo);
+						if (_PrintMemoryInfo) {
+							PrintMemoryBasicInformation(memMeminfo);
+						}
+
+						if (_DumpHex) {
+							int length = (int)strlen(filter.strString);
+							unsigned char* hexStart = (strBufferNow >= strBuffer + _SlipBefore) ? strBufferNow - _SlipBefore : strBuffer;
+							int hexLength = length + _SlipBefore + _SlipAfter;
+							if (hexStart + hexLength > strBuffer + szBytesRead) {
+								hexLength = (int)((strBuffer + szBytesRead) - hexStart);
+							}
+							WriteHexOut(hexStart, hexLength, _DumpFile ? _DumpFile : stdout);
+						}
+					}
+
+					
 				}
 			}
 			else if (filter.bUNICODE) {
 				
 				// naive UTF-16LE check
 				bool bMatch = true;
+				currentIndex = _totalMatches++;
 				int len = (int)strlen(filter.strString);
 				for (int i = 0; i < len * 2; i += 2) {
 					if (strBufferNow + i >= strBuffer + szBytesRead ||
@@ -469,12 +609,70 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 						break;
 					}
 				}
-
+				
 				if (bMatch) {
-					numHits++;
+
+					if (/*filter.bReadable*/true) {
+						fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
+						fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" (unicode) in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(lngAddress + intCounter));
+						fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
+					}
+
+					if (filter.resultsFilterIndex != -1) {
+						if (filter.resultsFilterIndex == currentIndex) {
+							resultsFilterShowThisResult = true;
+						}
+						else {
+							resultsFilterShowThisResult = false;
+						}
+
+						if (filter.resultsFilterMemoryAddress != 0) {
+							uintptr_t base = static_cast<uintptr_t>(lngAddress);
+							uintptr_t offset = static_cast<uintptr_t>(intCounter);
+							uintptr_t target = filter.resultsFilterMemoryAddress;
+
+							uintptr_t rangeEnd = base + offset;
+
+							// Prevent unsigned overflow
+							if (rangeEnd >= base) {
+								if (target < rangeEnd) {
+									uintptr_t deltaAddresses = rangeEnd - target;
+									int deltaBytes = static_cast<int>(deltaAddresses / 8);
+									_SlipBefore = deltaBytes;
+
+									logmsg("memory address filter 0x%" PRIxPTR
+										" calculated delta address 0x%" PRIxPTR
+										" delta bytes %d, dumping %d bytes before match\n",
+										target, deltaAddresses, deltaBytes, _SlipBefore);
+								}
+								else {
+									uintptr_t deltaAddresses = target - rangeEnd;
+									int deltaBytes = static_cast<int>(deltaAddresses / 8);
+									_SlipAfter = deltaBytes;
+
+									logmsg("memory address filter 0x%" PRIxPTR
+										" calculated delta address 0x%" PRIxPTR
+										" delta bytes %d, dumping %d bytes after match\n",
+										target, deltaAddresses, deltaBytes, _SlipAfter);
+								}
+							}
+						}
+					}
+
 					EMemoryType processMemType = GetMemType(memMeminfo);
-					if (filter.etypeFilter == EMEM_ALL || processMemType == filter.etypeFilter) {
-						loghighlight("Got unicode hit for %s at %p in PID %d page starts at %p\n", filter.strString, (void*)(lngAddress + intCounter), pid , (void*)lngAddress);
+					if (filter.etypeFilter != EMEM_ALL && processMemType != filter.etypeFilter) {
+						resultsFilterShowThisResult = false;
+					}
+
+					
+					loghighlight("[match %3d] \"%-20s\" | pid %5d | 0x%016" PRIxPTR " | %-4s\n",
+						currentIndex,
+						filter.strString,
+						pid,
+						static_cast<uintptr_t>(lngAddress + intCounter),
+						resultsFilterShowThisResult ? actionShow.c_str() : actionSkip.c_str()
+					);
+					if (resultsFilterShowThisResult) {
 						PrintMemInfo(memMeminfo);
 
 						if (_DumpHex) {
@@ -487,6 +685,8 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 							WriteHexOut(hexStart, hexLength, _DumpFile ? _DumpFile : stdout);
 						}
 					}
+					
+					
 				}
 			}
 
@@ -496,7 +696,7 @@ int CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE
 	}
 
 	VirtualFree(strBuffer, szSize, MEM_RELEASE);
-	return numHits;
+	return scanSuccess;
 }
 
 
@@ -560,7 +760,7 @@ void CMemUtils::WriteHexOut(unsigned char* buf, int size, FILE* out) {
 	fprintf(out, "\n");
 }
 
-void CMemUtils::SearchInAllProcess(bool bUseRegex, bool bReadable, bool bASCII, bool bUNICODE, const char* strString, bool outputToFile, std::string outputFile)
+void CMemUtils::SearchInAllProcess(FilterParameters filter, bool enableOutputToFile, std::string outputFilePath)
 {
 	DWORD dwPIDArray[2048], dwRet, dwPIDS, intCount;
 
@@ -577,8 +777,8 @@ void CMemUtils::SearchInAllProcess(bool bUseRegex, bool bReadable, bool bASCII, 
 	{
 		if (dwPIDArray[intCount] != GetCurrentProcessId()) {
 			logmsg("$d) scanning PID %d...\n", (intCount+1),dwPIDArray[intCount]);
-			FilterParameters filter(true,bUNICODE,strString,bReadable,nullptr,false,EMEM_ALL,bUseRegex);
-			int numHits = SearchProcessMemory(dwPIDArray[intCount],filter, outputToFile, outputFile);
+			
+			int numHits = SearchProcessMemory(dwPIDArray[intCount],filter, enableOutputToFile, outputFilePath);
 			if (numHits == -1) {
 				logerror("$d) scanning PID %d Error Occured!\n", (intCount + 1), dwPIDArray[intCount]);
 			}

@@ -26,6 +26,7 @@ enum class cmdlineOptTypes : uint8_t {
     After,          // -a
     Before,         // -b
     Color,          // -c
+    Address,
     Elevate,      // -e
     InputFile,      // -i
     ListAll,        // -l
@@ -40,6 +41,7 @@ enum class cmdlineOptTypes : uint8_t {
     Verbose,        // -v
     HexDump,        // -x
     Unicode,        // -u
+    Index,
     PrintableOnly   // -z
 };
 

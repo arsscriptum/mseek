@@ -27,14 +27,15 @@ typedef struct _FilterParameters {
     bool bFileOpenForWriting;
     EMemoryType etypeFilter;
     bool bIsRegexPattern;
-
+    int resultsFilterIndex;
+    ULONG_PTR resultsFilterMemoryAddress;
     // Default constructor
     _FilterParameters() {
         default_();
     }
 
     // Constructor with parameters
-    _FilterParameters(bool ascii, bool unicode, const char* searchStr, bool readable, const char* outFile, bool fileWrite, EMemoryType typeFilter, bool isRegex)
+    _FilterParameters(bool ascii, bool unicode, const char* searchStr, bool readable, const char* outFile, bool fileWrite, EMemoryType typeFilter, bool isRegex, int filterIndex, ULONG_PTR filterMemAddress)
         : bASCII(ascii),
         bUNICODE(unicode),
         strString(searchStr),
@@ -42,6 +43,8 @@ typedef struct _FilterParameters {
         strOutFileName(outFile),
         bFileOpenForWriting(fileWrite),
         etypeFilter(typeFilter),
+        resultsFilterIndex(filterIndex),
+        resultsFilterMemoryAddress(filterMemAddress),
         bIsRegexPattern(isRegex)
     {}
 
@@ -54,6 +57,8 @@ typedef struct _FilterParameters {
         strOutFileName = nullptr;
         bFileOpenForWriting = false;
         etypeFilter = EMEM_UNKNOWN;
+        resultsFilterIndex = -1;
+        resultsFilterMemoryAddress = 0;
         bIsRegexPattern = false;
     }
 
@@ -70,11 +75,11 @@ public:
     void Initialize(bool dumpHex, bool printableOnly, bool suppress, DWORD slipBefore, DWORD slipAfter,bool memInfo);
 
     // Public API
-    void SearchInAllProcess(bool bUseRegex, bool bReadable, bool bASCII, bool bUNICODE, const char* strString, bool outputToFile, std::string outputFile);
+    void SearchInAllProcess(FilterParameters filter, bool enableOutputToFile, std::string outputFilePath);
     EMemoryType GetMemType(MEMORY_BASIC_INFORMATION memMeminfo);
     void PrintMemInfo(MEMORY_BASIC_INFORMATION memMeminfo);
     
-    int SearchProcessMemory(DWORD pid, FilterParameters filter, bool outputToFile, std::string outputFile);
+    bool SearchProcessMemory(DWORD pid, FilterParameters filter, bool enableOutputToFile, std::string outputFilePath);
     void WriteHexOut(unsigned char* buf, int size, FILE* out);
 
     bool GetProcessNameFromPID(DWORD pid, TCHAR* buffer, DWORD bufferSize);
@@ -84,6 +89,8 @@ public:
     bool EnableDebugPrivilege(HANDLE hProcess);
     bool HasVMReadAccessElevated(DWORD pid);
     bool GetProcessPidFromName(std::string processName, DWORD& pid);
+    void ResetSearchResults();
+    int GetTotalMatchesCount() { return _totalMatches;  }
     
 private:
     // Private constructor/destructor
@@ -95,6 +102,8 @@ private:
         _PrintableOnly(false),
         _PrintMemoryInfo(false),
         _SlipBefore(0),
+        _totalMatches(0),
+        _partialMemoryReads(0),
         _SlipAfter(0)
     {}
     ~CMemUtils() = default;
@@ -106,7 +115,7 @@ private:
     CMemUtils& operator=(CMemUtils&&) = delete;
 
     void PrintMemoryBasicInformation(const MEMORY_BASIC_INFORMATION& mbi);
-    int ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter);
+    bool ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter);
 
     // Member variables
     FILE*  _DumpFile;
@@ -117,4 +126,6 @@ private:
     bool _FileOpenForWriting;
     bool _PrintableOnly;
     bool _PrintMemoryInfo;
+    unsigned int _totalMatches;
+    unsigned int _partialMemoryReads;
 };

@@ -115,6 +115,14 @@ You can use ```-e``` to auto -elevate privileges (not fully supported, best you 
 
 --------------------------------
 
+## Wishlist and Planned Features
+
+1. Add an option to output search results in JSON or CSV fornats so that they can be easily parsed in PowerShell
+1. Add a Encryption Pattern  detction, brute-force decryption of memory segments.
+
+
+--------------------------------
+
 
 ## 📝 License
 
