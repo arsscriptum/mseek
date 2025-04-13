@@ -17,11 +17,12 @@
 
 extern bool g_ColoredOutput;
 extern bool g_forceNoColors;
-
+extern bool g_logsDisabled;
 
 
 void logmsgn(const char* format, ...)
 {
+	if (g_logsDisabled) { return;  }
 	if (g_ColoredOutput) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stdout, "\033[97m");
@@ -42,6 +43,8 @@ void logmsgn(const char* format, ...)
 
 void logmsg(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
+
 	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stdout, "\033[36m[i] \033[0m");
@@ -71,6 +74,7 @@ void logmsg(const char* format, ...)
 
 void logmsgext(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
 	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stdout, "\033[37m[memory] \033[0m");
@@ -99,6 +103,7 @@ void logmsgext(const char* format, ...)
 }
 void logsuccess(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
 	// Set console text color to red (ANSI escape sequence)
 	if (g_forceNoColors) {
 		fprintf(stdout, "[done] ");
@@ -123,6 +128,7 @@ void logsuccess(const char* format, ...)
 
 void loghighlight(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
 	// Set console text color to red (ANSI escape sequence)
 
 	if (g_ColoredOutput && !g_forceNoColors) {
@@ -154,6 +160,7 @@ void loghighlight(const char* format, ...)
 
 void logwarn(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
 	if (g_forceNoColors) {
 		fprintf(stderr, "[warn] ");
 	}
@@ -177,6 +184,7 @@ void logwarn(const char* format, ...)
 
 void logerror(const char* format, ...)
 {
+	if (g_logsDisabled) { return; }
 	if (g_ColoredOutput && !g_forceNoColors) {
 		// Set console text color to red (ANSI escape sequence)
 		fprintf(stderr, "\033[31m[!] \033[0m");

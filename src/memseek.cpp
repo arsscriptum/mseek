@@ -37,7 +37,7 @@
 bool g_ColoredOutput = false;
 bool g_bSuppress = false;
 bool g_forceNoColors = false;
-
+bool g_logsDisabled = false;
 typedef enum ESearchInput {
 	ESINPUT_NOTSET,
 	ESINPUT_STRING,
@@ -207,7 +207,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optElevate({ "-e", "--elevate" }, "Elevate Privileges if required", false, cmdlineOptTypes::Elevate);
 	SCmdlineOptValues optHelp({ "-h", "--help" }, "Show help message", false, cmdlineOptTypes::Help);
 	SCmdlineOptValues optInputFile({ "-i", "--input" }, "Input file for search strings", true, cmdlineOptTypes::InputFile);
-	SCmdlineOptValues optListAll({ "-l", "--list" }, "Search all processes for the string", false, cmdlineOptTypes::ListAll);
+	SCmdlineOptValues optListAll({ "-l", "--list" }, "Search all processes for the string, or use STDIN", false, cmdlineOptTypes::ListAll);
 	SCmdlineOptValues optMemoryInfo({ "-m", "--meminfo" }, "Print Extended Memory Info", false, cmdlineOptTypes::MemoryInfo);
 	SCmdlineOptValues optProcessName({ "-n", "--name" }, "Search specific process: use process name", true, cmdlineOptTypes::ProcName);
 	SCmdlineOptValues optOutputFile({ "-o", "--out" }, "Output matching memory blocks to a file (used with -x)", true, cmdlineOptTypes::OutputFile);
@@ -465,13 +465,99 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		}
 
 		logmsg("done\n");
+
+		std::vector<CProcessEnumerator::CProcessEntry*> list = penum.GetCopiedProcessEntries();
+		
+		for (const auto& entry : list) {
+			if (entry) {
+				entry->GetProcessInformation();
+				//logmsg( "PID: %lu\tFile: %s\tImage: %s\n", entry->dwPID, entry->sProcessName.c_str(), entry->sProcessImagePath.c_str() );
+
+				FilterParameters filter(
+					true,                    // bASCII
+					isOptionSetUnicodeMode,           // bUNICODE
+					searchString.c_str(),               // strString
+					isOptionSetPrintableOnly,            // bReadable
+					outputFile.c_str(),          // strOutFileName (optional)
+					false,                   // bFileOpenForWriting (default, as before)
+					eMemoryTypeFilter,       // etypeFilter
+					isOptionSetUseRegexPatterns,
+					resultsFilterIndex,
+					resultsFilterMemoryAddress
+				);
+				if (CMemUtils::Get().HasVMReadAccess(entry->dwPID)) {
+					g_logsDisabled = true;
+					bool searchSuccess = CMemUtils::Get().SearchProcessMemory(entry->dwPID, filter, outputToFile, outputFile);
+					g_logsDisabled = false;
+					if (!searchSuccess) {
+						logerror("[%d] error during memory probe\n", entry->dwPID);
+					}
+					else {
+						if (CMemUtils::Get().GetTotalMatchesCount()) {
+							logsuccess("%d hits found in pid %d (%s)\n", CMemUtils::Get().GetTotalMatchesCount(), entry->dwPID, entry->sProcessName.c_str());
+						}
+					}
+				}
+			}
+		}
+		const SearchResultsMap& results = CMemUtils::Get().GetSearchResults();
+		for (SearchResultsMap::const_iterator it = results.begin(); it != results.end(); ++it) {
+			DWORD pid = it->first;
+			const std::vector<uintptr_t>& addresses = it->second;
+
+			printf("PID %lu had %zu hits\n", pid, addresses.size());
+			for (std::vector<uintptr_t>::const_iterator addrIt = addresses.begin(); addrIt != addresses.end(); ++addrIt) {
+				printf("  - Hit at address: 0x%016" PRIxPTR "\n", *addrIt);
+			}
+		}
+
+
+
 		return 0;
 
 	}else if (searchMode == ESEARCH_STDIN_PROCESSES) {
-		// Proceed with processing
+		logmsg("searching in %d processes from stdin: \n", pids.size());
 		for (DWORD pid : pids) {
-			logmsg("searching %d\n", pid);
-			// Call your memory scanner function here...
+			printf("%d, ", pid);
+		}
+		printf("\n");
+		FilterParameters filter(
+			true,                    // bASCII
+			isOptionSetUnicodeMode,           // bUNICODE
+			searchString.c_str(),               // strString
+			isOptionSetPrintableOnly,            // bReadable
+			outputFile.c_str(),          // strOutFileName (optional)
+			false,                   // bFileOpenForWriting (default, as before)
+			eMemoryTypeFilter,       // etypeFilter
+			isOptionSetUseRegexPatterns,
+			resultsFilterIndex,
+			resultsFilterMemoryAddress
+		);
+		for (DWORD pid : pids) {
+
+			if((CMemUtils::Get().GetProcessNameFromPID(pid, procName)) && (CMemUtils::Get().HasVMReadAccess(pid) )) {
+				g_logsDisabled = true;
+				bool searchSuccess = CMemUtils::Get().SearchProcessMemory(pid, filter, outputToFile, outputFile);
+				g_logsDisabled = false;
+				if (!searchSuccess) {
+					logerror("[%d] error during memory probe\n", pid);
+				}
+				else {
+					if (CMemUtils::Get().GetTotalMatchesCount()) {
+						logsuccess("%d hits found in pid %d (%s)\n", CMemUtils::Get().GetTotalMatchesCount(), pid, procName.c_str());
+					}
+				}
+			}
+		}
+		const SearchResultsMap& results = CMemUtils::Get().GetSearchResults();
+		for (SearchResultsMap::const_iterator it = results.begin(); it != results.end(); ++it) {
+			DWORD pid = it->first;
+			const std::vector<uintptr_t>& addresses = it->second;
+
+			printf("PID %lu had %zu hits\n", pid, addresses.size());
+			for (std::vector<uintptr_t>::const_iterator addrIt = addresses.begin(); addrIt != addresses.end(); ++addrIt) {
+				printf("  - Hit at address: 0x%016" PRIxPTR "\n", *addrIt);
+			}
 		}
 		return 0;
 	}else if (searchMode == ESEARCH_PNAME) {

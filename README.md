@@ -96,13 +96,73 @@ The example below will look for all GUIDS with this REGEX pattern<sup>[7](#ref6)
 ```
 mseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
 ```
+--------------------------------
+
+## 💡 Using STDIN for Processes
+
+
+![stdin_help](img/stdin_help.png)
+
+Using the argument **-l or --list** , you can either **list and search ALL processes** or use **stdin** to input processes.
+
+As an example, I wrote the scripts: *[Find-FSecure.ps1](scripts\Find-FSecure.ps1)* and *[Find-ProcessIn.ps1](scripts\Find-ProcessIn.ps1)* that will list the PIDs
+of processes of executables located in certain paths.
+
+```powershell
+> Find-ProcessIn -Path "C:\Program Files\F-Secure\TOTAL\x64" -IncludeChildren
+
+   Id Name                   CommandLine
+   -- ----                   -----------
+ 1700 openvpn.exe            "C:\Program Files\F-Secure\TOTAL\x64\UnifiedSDK.Service-x64_2\Executable\OpenVpn\x64\openvpn.exe" --config "C:\ProgramData\F-Secure\NS\default\FSVpnSDK\system\openvpn\ovpn.cfg"
+ 3832 wintun_c.exe           "C:\Program Files\F-Secure\TOTAL\x64\UnifiedSDK.Service-x64_2\Executable\OpenVpn\x64\wintun_c.exe"
+ 5344 fshoster64.exe         "C:\Program Files\F-Secure\TOTAL\x64\fshoster64.exe" --service --namespace default --id 0
+ 7396 fshoster64.exe         "C:\Program Files\F-Secure\TOTAL\x64\fshoster64.exe" --app --namespace default --id 1
+10128 fshoster64.exe         "C:\Program Files\F-Secure\TOTAL\x64\fshoster64.exe" --service --namespace default --id 2
+11772 UnifiedSDK.Service.exe "C:\Program Files\F-Secure\TOTAL\x64\UnifiedSDK.Service-x64_2\UnifiedSDK.Service.exe" -run "C:\ProgramData\F-Secure\NS\default\FSVpnSDK\UnifiedSDK.config"
+```
+
+So get the PIDs:
+
+```powershell
+> Find-ProcessIn -Path "C:\Program Files\F-Secure\TOTAL\x64" -IncludeChildren | Select -ExpandProperty Id
+1700
+3832
+5344
+7396
+10128
+11772
+```
+
+
+The example below will input all the PIDs found in the script and pass them the mseek for search <sup>[8](#ref7)</sup>
+
+```bash
+.\scripts\Find-FSecure.ps1 | Select -ExpandProperty Id | D:\Dev\mseek\bin\x64\Debug\mseek.exe -l -s "<key>"
+
+mseek.exe v1.2.0.222 - processes memory scan tool
+regex support: enabled
+copyright (C) 1999-2023  Guillaume Plante
+built on Sun Apr 13 00:11:33 2025, for 64 bits platform
+
+[i] execution with administrator privileges!
+[i] checking stdin...
+[i] searching in 12 processes from stdin:
+1700, 3832, 5344, 7396, 10128, 11772, 1700, 3832, 5344, 7396, 10128, 11772,
+[done] 2 hits found in pid 11772 (C:\Program Files\F-Secure\TOTAL\x64\UnifiedSDK.Service-x64_2\UnifiedSDK.Service.exe)
+[done] 2 hits found in pid 11772 (C:\Program Files\F-Secure\TOTAL\x64\UnifiedSDK.Service-x64_2\UnifiedSDK.Service.exe)
+PID 11772 had 4 hits
+  - Hit at address: 0x0000020a5fd1e169
+  - Hit at address: 0x0000020a604c2169
+  - Hit at address: 0x0000020a5fd1e169
+  - Hit at address: 0x0000020a604c2169
+```
 
 
 --------------------------------
 
 ### 32bit Version Build in Win32 Configuration
 
-![1](img/buildx86.png)
+![build](img/buildx86.png)
 
 ### NOTE 
 
@@ -179,9 +239,16 @@ This software is provided as-is for educational and forensic analysis purposes. 
 
 ![6](img/example1.png)
 
+
 -------------------------------
 
 <a id="ref6"></a>[7] 
 <a href="img/regex.gif" target="_blank">
   <img src="img/regex.gif" alt="regex" style="width:600px;">
 </a>
+
+-------------------------------
+
+<a id="ref7"></a>[8] 
+
+![8](img/stdin.png)

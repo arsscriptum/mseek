@@ -125,40 +125,18 @@ public:
 		ESTATE_DONE
 	} ECurrentStateT;
 
-	struct CThreadEntry
-	{
-		DWORD th32ThreadID = 0;          // This thread
-		DWORD th32OwnerProcessID = 0;    // Process this thread is associated with
-		THREADENTRY32 win32ThreadEntry = { 0 };
+    struct CThreadEntry {
+        DWORD th32ThreadID = 0;
+        DWORD th32OwnerProcessID = 0;
+        THREADENTRY32 win32ThreadEntry = { 0 };
 
-		// Constructor
-		CThreadEntry() {
-			Defaults();
-		}
-
-		// Copy constructor
-		CThreadEntry(const CThreadEntry& e) {
-			Defaults();
-			memcpy(&win32ThreadEntry, &e.win32ThreadEntry, sizeof(win32ThreadEntry));
-		}
-
-		// Destructor
-		virtual ~CThreadEntry() = default;
-
-		// Set all members to default (zero) values
-		void Defaults() {
-			th32ThreadID = 0;
-			th32OwnerProcessID = 0;
-			memset(&win32ThreadEntry, 0, sizeof(win32ThreadEntry));
-		}
-
-		// Backward-compatible alias
-		void Reset() {
-			Defaults();
-		}
-	};
-
-
+        CThreadEntry() = default;
+        CThreadEntry(const CThreadEntry& e) {
+            th32ThreadID = e.th32ThreadID;
+            th32OwnerProcessID = e.th32OwnerProcessID;
+            memcpy(&win32ThreadEntry, &e.win32ThreadEntry, sizeof(win32ThreadEntry));
+        }
+    };
 	struct CModuleEntry
 	{
 		LPTSTR lpFilename = nullptr;
@@ -220,6 +198,10 @@ public:
 		char PsWin32Magic[20];
 		char PsWin64Magic[20];
 
+		std::string sProcessName;
+		std::string sProcessImagePath;
+
+
 		WCHAR imagePathW[MAX_FILENAME];
 		char imagePath[MAX_FILENAME];
 
@@ -239,6 +221,7 @@ public:
 			LOG_TRACE("CEnumProcess::CProcessEntry", "copy Constructor. Filename: %s", e.lpFilename);
 			Reset();
 			_STRNCPY(lpFilename, e.lpFilename, MAX_FILENAME);
+			sProcessName = e.lpFilename;
 		}
 		virtual ~CProcessEntry() 
 		{
@@ -303,6 +286,8 @@ public:
 					GetModuleFileNameExW(hProcess, hMod, imagePathW, cbNeeded);
 					sprintf(imagePath, "%ws", imagePathW);
 					LOG_INFO("CProcessEntry::GetProcessInformation", "process imagePath %s. pid %d", imagePath, dwPID);
+
+					sProcessImagePath = imagePath;
 				}
 			}
 
@@ -512,6 +497,16 @@ public:
 	bool FillModuleListPSAPI(TModules& mods, DWORD pid, HANDLE hProcess);
 	bool FillModuleListTH32(TModules& modules, DWORD pid);
 	bool FillThreadsTH32(TThreads& modules, DWORD pid);
+	std::vector<CProcessEntry*> GetCopiedProcessEntries() const {
+		std::vector<CProcessEntry*> copy;
+		for (auto entry : ProcessEntries) {
+			if (entry != nullptr) {
+				copy.push_back(new CProcessEntry(*entry)); // Deep copy via copy constructor
+			}
+		}
+		return copy;
+	}
+
 protected:
 
 	//overrideable

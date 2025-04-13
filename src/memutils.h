@@ -8,6 +8,15 @@
 //==============================================================================
 
 
+#ifndef __MEMUTILS_H__
+#define __MEMUTILS_H__
+
+#include <map>
+#include <vector>
+
+
+typedef std::map<DWORD, std::vector<uintptr_t>> SearchResultsMap;
+
 typedef enum EMemoryType {
 	EMEM_UNKNOWN,
 	EMEM_PRIVATE,
@@ -66,6 +75,9 @@ typedef struct _FilterParameters {
 
 class CMemUtils {
 public:
+    
+
+
     // Singleton access method
     static CMemUtils& Get() {
         static CMemUtils instance;
@@ -91,6 +103,14 @@ public:
     bool GetProcessPidFromName(std::string processName, DWORD& pid);
     void ResetSearchResults();
     int GetTotalMatchesCount() { return _totalMatches;  }
+    void ClearSearchResults() { _searchResults.clear(); }
+    const SearchResultsMap& GetSearchResults() const {
+        return _searchResults;
+    }
+
+
+    
+
     
 private:
     // Private constructor/destructor
@@ -128,4 +148,7 @@ private:
     bool _PrintMemoryInfo;
     unsigned int _totalMatches;
     unsigned int _partialMemoryReads;
+    SearchResultsMap _searchResults;
 };
+
+#endif

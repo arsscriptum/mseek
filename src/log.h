@@ -8,8 +8,8 @@
 //==============================================================================
 
 
-#ifndef __CORELIB_LOG_H__
-#define __CORELIB_LOG_H__
+#ifndef __LOG_H__
+#define __LOG_H__
 
 
 #include <sstream>

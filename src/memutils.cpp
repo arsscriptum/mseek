@@ -29,6 +29,11 @@
 #include <string_view>
 #include <inttypes.h>  // for PRIxPTR
 #include <cstdint>  // for uintptr_t
+#include <map>
+#include <vector>
+
+
+
 
 extern bool _Suppress;
 
@@ -261,6 +266,7 @@ bool CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool enab
 	BOOL bIsWow64Other = FALSE;
 	DWORD dwRES = 0;
 	bool scanSuccess = true;
+	_totalMatches = 0;
 
 	hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 	if (hProcess == NULL)
@@ -359,7 +365,7 @@ bool CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool enab
 
 }
 
-
+extern bool g_logsDisabled;
 bool CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDLE hProcess, MEMORY_BASIC_INFORMATION memMeminfo, FilterParameters filter)
 {
 	SIZE_T szBytesRead = 0;
@@ -400,12 +406,16 @@ bool CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDL
 				currentIndex = _totalMatches++;
 
 				bool resultsFilterShowThisResult = true;
-
-				if (/*filter.bReadable*/true) {
+				
+				if (!g_logsDisabled) {
 					fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
 					fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(matchAddress));
 					fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
 				}
+
+				uintptr_t matchAddr = (uintptr_t)matchAddress;  // or + intCounter for ASCII
+				_searchResults[pid].push_back(matchAddr);
+
 				if (filter.resultsFilterIndex != -1) {
 					if (filter.resultsFilterIndex == currentIndex) {
 						resultsFilterShowThisResult = true;
@@ -514,11 +524,14 @@ bool CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDL
 
 				if (bMatch) {
 
-					if (/*filter.bReadable*/true) {
+					if (!g_logsDisabled) {
 						fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
 						fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(lngAddress + intCounter));
 						fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
 					}
+					uintptr_t matchAddr = lngAddress + intCounter;  // or + intCounter for ASCII
+					_searchResults[pid].push_back(matchAddr);
+
 					if (filter.resultsFilterMemoryAddress != 0) {
 						uintptr_t base = static_cast<uintptr_t>(lngAddress);
 						uintptr_t offset = static_cast<uintptr_t>(intCounter);
@@ -612,11 +625,13 @@ bool CMemUtils::ScanMemory(DWORD pid, SIZE_T szSize, ULONG_PTR lngAddress, HANDL
 				
 				if (bMatch) {
 
-					if (/*filter.bReadable*/true) {
+					if (!g_logsDisabled) {
 						fprintf(_DumpFile ? _DumpFile : stdout, "\n\n==================================================================================\n");
 						fprintf(_DumpFile ? _DumpFile : stdout, "%d) found \"%s\" (unicode) in pid %d at %p\n", currentIndex, filter.strString, pid, (void*)(lngAddress + intCounter));
 						fprintf(_DumpFile ? _DumpFile : stdout, "==================================================================================\n\n");
 					}
+					uintptr_t matchAddr = lngAddress + intCounter;  // or + intCounter for ASCII
+					_searchResults[pid].push_back(matchAddr);
 
 					if (filter.resultsFilterIndex != -1) {
 						if (filter.resultsFilterIndex == currentIndex) {
