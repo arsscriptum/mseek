@@ -15,6 +15,10 @@
 #include "memutils.h"
 #include "win32.h"
 #include "cmdline.h"
+#include "ps_enum.h"
+#include "psinfo.h"
+#include "psutils.h"
+
 
 #include <stdio.h>
 #include <tchar.h>
@@ -28,11 +32,13 @@
 #include <cstdarg>
 #include <inttypes.h>  // for PRIxPTR
 #include <io.h>     // For _isatty
+#include <iomanip>
+#include <chrono>
+#include <filesystem>
+#include <sstream>
 #include <fcntl.h>  // (optional: for _O_TEXT, _O_BINARY etc.)
 #include <cstdint>  // for uintptr_t
-#include "ps_enum.h"
-#include "psinfo.h"
-#include "psutils.h"
+
 
 bool g_ColoredOutput = false;
 bool g_bSuppress = false;
@@ -112,6 +118,45 @@ bool IsRunningAsAdmin()
 }
 
 
+
+std::string GenerateAndCreateUniqueDumpFile(DWORD processId) {
+	// Base directory
+	std::string baseDir = "E:\\Dump\\mseek\\";
+
+	// Get current date
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+	struct tm local_tm;
+	localtime_s(&local_tm, &now_c);
+
+	std::ostringstream dateStream;
+	dateStream << std::put_time(&local_tm, "%Y-%m-%d");
+	std::string dateStr = dateStream.str();
+
+	// Ensure date directory exists
+	std::filesystem::path dirPath = baseDir + dateStr;
+	std::filesystem::create_directories(dirPath);
+
+	// Compose initial file path
+	std::filesystem::path baseFilePath = dirPath / std::to_string(processId);
+	std::filesystem::path filePath = baseFilePath;
+	int counter = 1;
+
+	// Add numeric suffix if needed
+	while (std::filesystem::exists(filePath)) {
+		filePath = baseFilePath.string() + "_" + std::to_string(counter);
+		++counter;
+	}
+
+	// Create the file
+	std::ofstream outfile(filePath);
+	outfile.close();
+
+	return filePath.string();
+}
+
+
+
 bool EnableSeImpersonatePrivilege()
 {
 	HANDLE hToken;
@@ -185,6 +230,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	std::string memoryType;
 	std::string resultsFilterIndexStr;
 	std::string resultsFilterMemoryAddressStr;
+	std::string dllFilename;
 
 #ifdef UNICODE
 	char** argn = (char**)Convert::allocate_argnw(argc, argv);
@@ -195,7 +241,6 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	CmdLineUtil::get()->initialize(argc, argn);
 
 	CmdlineParser* inputParser = CmdLineUtil::get()->parser();
-
 	
 	SCmdlineOptValues optVerbose({ "-v", "--verbose" }, "verbose output", false, cmdlineOptTypes::Verbose);
 	
@@ -204,6 +249,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optBefore({ "-b", "--before" }, "Print this many bytes before the match in the hex dump (used with -x)", true, cmdlineOptTypes::Before);
 	SCmdlineOptValues optColor({ "-c", "--color" }, "Use colored output for better readability", false, cmdlineOptTypes::Color);
 	SCmdlineOptValues optAddress({ "-d", "--address" }, "Specify memory address to search", true, cmdlineOptTypes::Address);
+	SCmdlineOptValues optDllDump({ "-g", "--dllmemdump" }, "Dump the memory used by a process using a specific dll", true, cmdlineOptTypes::DllDump);
 	SCmdlineOptValues optElevate({ "-e", "--elevate" }, "Elevate Privileges if required", false, cmdlineOptTypes::Elevate);
 	SCmdlineOptValues optHelp({ "-h", "--help" }, "Show help message", false, cmdlineOptTypes::Help);
 	SCmdlineOptValues optInputFile({ "-i", "--input" }, "Input file for search strings", true, cmdlineOptTypes::InputFile);
@@ -228,6 +274,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	inputParser->addOption(optHelp);
 	inputParser->addOption(optElevate);
 	inputParser->addOption(optMemoryInfo);
+	inputParser->addOption(optDllDump);
 	
 	
 	inputParser->addOption(optInputFile);
@@ -263,7 +310,12 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	bool isOptionSetUnicodeMode = inputParser->isSet(optUnicode);
 	bool isOptionSetElevatePrivileges = inputParser->isSet(optElevate);
 	bool isOptionSetExtendedMemInfo = inputParser->isSet(optMemoryInfo);
+	bool isOptionSetDllDump = inputParser->isSet(optDllDump);
 
+	if (inputParser->get_option_argument(optDllDump, dllFilename)) {
+		logmsg("searching dll %s", dllFilename.c_str());
+		return CMemUtils::Get().RunTest(dllFilename);
+	}
 	if (inputParser->get_option_argument(optAfter, afterBytes)) {
 		dwSlipAfter = atoi(afterBytes.c_str());
 	}
@@ -277,9 +329,6 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		resultsFilterMemoryAddress = ConvertStringToPtr(resultsFilterMemoryAddressStr);
 		logmsg("parsing memory address filter 0x%" PRIxPTR "\n", resultsFilterMemoryAddress);
 	}
-
-	
-	
 	if (inputParser->get_option_argument(optInputFile, inputFile)) {
 		searchInput = ESINPUT_FILE;
 	}
@@ -521,23 +570,27 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 			printf("%d, ", pid);
 		}
 		printf("\n");
-		FilterParameters filter(
-			true,                    // bASCII
-			isOptionSetUnicodeMode,           // bUNICODE
-			searchString.c_str(),               // strString
-			isOptionSetPrintableOnly,            // bReadable
-			outputFile.c_str(),          // strOutFileName (optional)
-			false,                   // bFileOpenForWriting (default, as before)
-			eMemoryTypeFilter,       // etypeFilter
-			isOptionSetUseRegexPatterns,
-			resultsFilterIndex,
-			resultsFilterMemoryAddress
-		);
+		
+		
 		for (DWORD pid : pids) {
-
+			std::string outfile = GenerateAndCreateUniqueDumpFile(pid);
+			logmsg("dumping %s\n", outfile.c_str());
+			FilterParameters filter(
+				true,                    // bASCII
+				isOptionSetUnicodeMode,           // bUNICODE
+				searchString.c_str(),               // strString
+				isOptionSetPrintableOnly,            // bReadable
+				outfile.c_str(),          // strOutFileName (optional)
+				false,                   // bFileOpenForWriting (default, as before)
+				eMemoryTypeFilter,       // etypeFilter
+				isOptionSetUseRegexPatterns,
+				resultsFilterIndex,
+				resultsFilterMemoryAddress
+			);
+			
 			if((CMemUtils::Get().GetProcessNameFromPID(pid, procName)) && (CMemUtils::Get().HasVMReadAccess(pid) )) {
 				g_logsDisabled = true;
-				bool searchSuccess = CMemUtils::Get().SearchProcessMemory(pid, filter, outputToFile, outputFile);
+				bool searchSuccess = CMemUtils::Get().SearchProcessMemory(pid, filter, outputToFile, outfile);
 				g_logsDisabled = false;
 				if (!searchSuccess) {
 					logerror("[%d] error during memory probe\n", pid);

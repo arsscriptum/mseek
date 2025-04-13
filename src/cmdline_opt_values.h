@@ -28,6 +28,7 @@ enum class cmdlineOptTypes : uint8_t {
     Color,          // -c
     Address,
     Elevate,      // -e
+    DllDump,         // -b
     InputFile,      // -i
     ListAll,        // -l
     MemoryInfo,        // -l

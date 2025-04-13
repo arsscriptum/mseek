@@ -93,6 +93,13 @@ public:
     
     bool SearchProcessMemory(DWORD pid, FilterParameters filter, bool enableOutputToFile, std::string outputFilePath);
     void WriteHexOut(unsigned char* buf, int size, FILE* out);
+    DWORD FindProcessWithDll(const std::string& dllName);
+    int RunTest(std::string dllName);
+    std::string GenerateAndCreateUniqueDumpFile(std::string dllName);
+    HMODULE GetModuleHandleInRemoteProcess(HANDLE hProcess, const std::string& dllName);
+    void ReadMemoryRegion(std::string dllName,HANDLE hProcess, LPCVOID baseAddress, SIZE_T size);
+    void ReadDllMemory(const char* processName, const char* dllName);
+    DWORD FindProcessId(const char* processName);
 
     bool GetProcessNameFromPID(DWORD pid, TCHAR* buffer, DWORD bufferSize);
     bool GetProcessNameFromPID(DWORD pid, std::string& processName);

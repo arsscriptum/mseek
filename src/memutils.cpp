@@ -255,6 +255,275 @@ void CMemUtils::ResetSearchResults() {
 	_partialMemoryReads = 0;
 }
 
+
+
+DWORD CMemUtils::FindProcessWithDll(const std::string& dllName) {
+	DWORD processes[1024], needed;
+	if (!EnumProcesses(processes, sizeof(processes), &needed))
+		return 0;
+
+	DWORD count = needed / sizeof(DWORD);
+	for (DWORD i = 0; i < count; ++i) {
+		DWORD pid = processes[i];
+		HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+		if (!hProcess)
+			continue;
+
+		HMODULE hMods[1024];
+		DWORD cbNeeded;
+		if (EnumProcessModulesEx(hProcess, hMods, sizeof(hMods), &cbNeeded, LIST_MODULES_ALL)) {
+			for (unsigned int j = 0; j < (cbNeeded / sizeof(HMODULE)); ++j) {
+				TCHAR szModName[MAX_PATH];
+				if (GetModuleFileNameEx(hProcess, hMods[j], szModName, sizeof(szModName) / sizeof(TCHAR))) {
+					std::string modName(szModName);
+					if (modName.find(dllName) != std::string::npos) {
+						CloseHandle(hProcess);
+						return pid;
+					}
+				}
+			}
+		}
+		CloseHandle(hProcess);
+	}
+	return 0;
+}
+
+HMODULE CMemUtils::GetModuleHandleInRemoteProcess(HANDLE hProcess, const std::string& dllName) {
+	HMODULE hMods[1024];
+	DWORD cbNeeded;
+
+	if (EnumProcessModulesEx(hProcess, hMods, sizeof(hMods), &cbNeeded, LIST_MODULES_ALL)) {
+		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); ++i) {
+			TCHAR szModName[MAX_PATH];
+			if (GetModuleFileNameEx(hProcess, hMods[i], szModName, sizeof(szModName) / sizeof(TCHAR))) {
+				std::string modName(szModName);
+				if (modName.find(dllName) != std::string::npos) {
+					return hMods[i]; // base address
+				}
+			}
+		}
+	}
+	return NULL;
+}
+
+#include <iomanip>
+#include <chrono>
+#include <filesystem>
+#include <sstream>
+#include <fcntl.h>  // (optional: for _O_TEXT, _O_BINARY etc.)
+#include <cstdint>  // for uintptr_t
+#include <inttypes.h>  // for PRIxPTR
+#include <io.h>  
+#include <chrono>
+#include <filesystem>
+#include <fstream>
+
+
+std::string CMemUtils::GenerateAndCreateUniqueDumpFile(std::string dllName) {
+	// Base directory
+	std::string baseDir = "E:\\Dump\\mseek\\";
+	std::string dllFullName = dllName + "_memdump.log";
+
+	// Get current date
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+	struct tm local_tm;
+	localtime_s(&local_tm, &now_c);
+
+	std::ostringstream dateStream;
+	dateStream << std::put_time(&local_tm, "%Y-%m-%d");
+	std::string dateStr = dateStream.str();
+
+	// Ensure date directory exists
+	std::filesystem::path dirPath = baseDir + dateStr;
+	std::filesystem::create_directories(dirPath);
+
+	// Compose initial file path
+	std::filesystem::path baseFilePath = dirPath / dllFullName;
+	std::filesystem::path _filePath = baseFilePath;
+	int counter = 1;
+
+	// Add numeric suffix if needed
+	while (std::filesystem::exists(_filePath)) {
+		_filePath = baseFilePath.string() + "_" + std::to_string(counter) + "_memdump.log";
+		++counter;
+	}
+
+	// Create the file
+	std::ofstream __outfile(_filePath);
+	__outfile.close();
+
+	return _filePath.string();
+}
+
+
+
+int CMemUtils::RunTest(std::string dllName) {
+	// vpn_configuration_plugin_64.dll KeyApi_64.dll KeyApiPlugin_64.dll fsvpnsdkcustomization_64.dll endpointprotectionclient.dll fs_ccf_client_auth_64.dll fs_network_protection_64.dll
+
+	DWORD pid = FindProcessWithDll(dllName);
+	if (pid == 0) {
+		std::cout << "Process with " << dllName << " not found.\n";
+		return 1;
+	}
+
+	HANDLE hProcess = OpenProcess(PROCESS_VM_READ | PROCESS_QUERY_INFORMATION, FALSE, pid);
+	if (!hProcess) {
+		std::cerr << "Failed to open process.\n";
+		return 1;
+	}
+
+	HMODULE hMod = GetModuleHandleInRemoteProcess(hProcess, dllName);
+	if (!hMod) {
+		std::cerr << "DLL not found in target process.\n";
+		CloseHandle(hProcess);
+		return 1;
+	}
+
+	MODULEINFO modInfo;
+	if (GetModuleInformation(hProcess, hMod, &modInfo, sizeof(modInfo))) {
+		ReadMemoryRegion(dllName,hProcess, modInfo.lpBaseOfDll, modInfo.SizeOfImage);
+	}
+
+	CloseHandle(hProcess);
+	return 0;
+}
+
+#include <iostream>
+#include <fstream>
+#include <iomanip>
+
+#include <windows.h>
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+
+void CMemUtils::ReadMemoryRegion(std::string dllName, HANDLE hProcess, LPCVOID baseAddress, SIZE_T size) {
+	_PrintableOnly = true;
+	const SIZE_T chunkSize = 0x1000; // 4096 bytes, one memory page
+	BYTE* buffer = new BYTE[size];
+	memset(buffer, 0, size);
+
+	SIZE_T totalRead = 0;
+	bool error299 = false;
+
+	if (!ReadProcessMemory(hProcess, baseAddress, buffer, size, &totalRead)) {
+		DWORD err = GetLastError();
+		if (err == ERROR_PARTIAL_COPY) {
+			_partialMemoryReads++;
+			error299 = true;
+
+			// Recover by reading memory in smaller chunks
+			SIZE_T offset = 0;
+			while (offset < size) {
+				SIZE_T toRead = min(chunkSize, size - offset);
+				SIZE_T bytesReadChunk = 0;
+				if (ReadProcessMemory(hProcess, (LPCVOID)((uintptr_t)baseAddress + offset), buffer + offset, toRead, &bytesReadChunk)) {
+					totalRead += bytesReadChunk;
+				}
+				else {
+					// Log but continue
+					DWORD subErr = GetLastError();
+					logerror("Partial read error %d at %08llx (chunk offset %llu)\n", subErr, (uintptr_t)baseAddress + offset, offset);
+				}
+				offset += toRead;
+			}
+		}
+		else {
+			logerror("Failed to read process memory %d at %08llx read %llu\n", err, baseAddress, size);
+			delete[] buffer;
+			return;
+		}
+	}
+
+	std::cout << "Read " << totalRead << " bytes from DLL memory region";
+	if (error299) std::cout << " (partial recovery mode)";
+	std::cout << ".\n";
+
+	std::string fpath = GenerateAndCreateUniqueDumpFile(dllName);
+	std::cout << "Dumping in " << fpath << ".\n";
+
+	FILE* outFile = fopen(fpath.c_str(), "w");
+	if (outFile != nullptr) {
+		WriteHexOut(buffer, static_cast<int>(totalRead), outFile);
+		fclose(outFile);
+		std::cout << "Memory written to " << fpath << "\n";
+	}
+	else {
+		std::cerr << "Failed to open memory dump file for writing.\n";
+	}
+
+	delete[] buffer;
+}
+
+
+
+
+DWORD CMemUtils::FindProcessId(const char* processName) {
+	PROCESSENTRY32 pe32;
+	pe32.dwSize = sizeof(PROCESSENTRY32);
+	HANDLE hSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+
+	if (Process32First(hSnapshot, &pe32)) {
+		do {
+			if (_stricmp(pe32.szExeFile, processName) == 0) {
+				CloseHandle(hSnapshot);
+				return pe32.th32ProcessID;
+			}
+		} while (Process32Next(hSnapshot, &pe32));
+	}
+
+	CloseHandle(hSnapshot);
+	return 0;
+}
+
+void CMemUtils::ReadDllMemory(const char* processName, const char* dllName) {
+	DWORD pid = FindProcessId(processName);
+	if (!pid) {
+		printf("Process not found.\n");
+		return;
+	}
+
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	if (!hProcess) {
+		printf("Failed to open process.\n");
+		return;
+	}
+
+	HMODULE hMods[1024];
+	DWORD cbNeeded;
+	if (EnumProcessModules(hProcess, hMods, sizeof(hMods), &cbNeeded)) {
+		for (unsigned int i = 0; i < (cbNeeded / sizeof(HMODULE)); i++) {
+			char modName[MAX_PATH];
+			if (GetModuleFileNameExA(hProcess, hMods[i], modName, sizeof(modName))) {
+				if (strstr(modName, dllName)) {
+					printf("Found DLL at base address: %p\n", hMods[i]);
+
+					// Read 256 bytes from base address
+					BYTE buffer[256];
+					SIZE_T bytesRead;
+					if (ReadProcessMemory(hProcess, hMods[i], buffer, sizeof(buffer), &bytesRead)) {
+						printf("Read %llu bytes from DLL memory.\n", (unsigned long long)bytesRead);
+						// Optionally dump bytes
+						for (SIZE_T j = 0; j < bytesRead; j++) {
+							printf("%02X ", buffer[j]);
+							if ((j + 1) % 16 == 0) printf("\n");
+						}
+					}
+					else {
+						printf("Failed to read memory.\n");
+					}
+
+					break;
+				}
+			}
+		}
+	}
+
+	CloseHandle(hProcess);
+}
+
+
 bool CMemUtils::SearchProcessMemory(DWORD pid,FilterParameters filter, bool enableOutputToFile, std::string outputFilePath)
 {
 	DWORD dwRet, dwMods;
