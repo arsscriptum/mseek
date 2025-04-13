@@ -15,6 +15,7 @@
 #include <string>
 #include <memory>
 #include <sstream>
+#include <iomanip>
 #include <map>
 #include <algorithm>
 #include "log.h"
@@ -51,9 +52,11 @@ public:
         return _options == other._options;
     }
     void dump_options(std::ostringstream& dbg_output) const {
-        dbg_output << "\t" << _options.at(0).c_str() << ", " << _options.at(1).c_str() << "\t: " << _description.c_str() << std::endl;
+        constexpr int name1_width = 10;
+        constexpr int name2_width = 15;
+        constexpr int desc_width = 75;
+        dbg_output << std::right << std::setw(name1_width) << _options.at(0).c_str()  << std::left << std::setw(2) << ", " << std::left << std::setw(name2_width) << _options.at(1).c_str() << std::left  << std::setw(desc_width) << _description.c_str() << std::endl;
     }
-  
 
     std::vector<std::string> _options;
     std::string _description;

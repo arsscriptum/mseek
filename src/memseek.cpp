@@ -63,10 +63,10 @@ typedef enum ESearchMode {
 void usage(CmdlineParser* inputParser) {
 #ifdef PLATFORM_WIN64
 	std::string platform_str = "for 64 bits platform";
-	std::string name_str = "mseek.exe";
+	std::string name_str = "xmseek.exe";
 #else
 	std::string platform_str = "for 32 bits platform";
-	std::string name_str = "mseek32.exe";
+	std::string name_str = "xmseek32.exe";
 #endif
 	logmsgn( "%s <-s string> <-p PID | -n PROCESSNAME | -i FILE> [<-x> [-b -a -z -o -t <image|mapped|private>]] [-x] [-q -c -h]\n", name_str.c_str());
 
@@ -80,16 +80,16 @@ void banner() {
 	std::string verstr = mseek::version::GetAppVersion();
 #ifdef PLATFORM_WIN64
 	std::string platform_str = "for 64 bits platform";
-	std::string name_str = "mseek.exe";
+	std::string name_str = "xmseek.exe";
 #else
 	std::string platform_str = "for 32 bits platform";
-	std::string name_str = "mseek32.exe";
+	std::string name_str = "xmseek32.exe";
 #endif
 	logmsgn("\n%s v%s - processes memory scan tool\n", name_str.c_str(), verstr.c_str());
-#ifdef ENABLE_REGEX_SUPPORT
-	logmsgn("regex support: enabled\n");
+#ifdef EXTENDED_FEATURE_VERSION
+	logmsgn("extended features version\n");
 #else
-    logmsgn("regex support: disabled\n");
+    logmsgn("vanilla\n");
 #endif
 	logmsgn("copyright (C) 1999-2023  Guillaume Plante\n");
 	logmsgn("built on %s, %s\n\n", __TIMESTAMP__, platform_str.c_str());
@@ -344,11 +344,6 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	if (inputParser->get_option_argument(optInputFile, inputFile)) {
 		searchInput = ESINPUT_FILE;
 	}
-
-
-	CMemUtils::Get().ListLoadedDlls(1234);  // Replace 1234 with actual PID
-
-	
 	
 	if (inputParser->get_option_argument(optProcessName, procName)) {
 		searchMode = ESEARCH_PNAME;

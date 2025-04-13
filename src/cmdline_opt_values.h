@@ -72,9 +72,14 @@ struct SCmdlineOptValues {
         return _options == other._options;
     }
     void dump_options(std::ostringstream& dbg_output) {
-        for (auto&& opt : _options) {
-            dbg_output << _description << " : " << opt << std::endl;
-            LOG_TRACE("SCmdlineOptValues::dump_options", "%s: option %s", _description.c_str(), opt.c_str());
+        constexpr int desc_width = 20;  // adjust width as needed for alignment
+
+        for (const auto& opt : _options) {
+            dbg_output << std::left << std::setw(desc_width)
+                << _description << " : " << opt << std::endl;
+
+            LOG_TRACE("SCmdlineOptValues::dump_options",
+                "%-*s : option %s", desc_width, _description.c_str(), opt.c_str());
         }
     }
 };

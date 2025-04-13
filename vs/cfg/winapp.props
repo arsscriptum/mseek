@@ -95,7 +95,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <PreprocessorDefinitions>ENABLE_REGEX_SUPPORT;DEBUG;DEVELOPMENT;DEBUG_INFO;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXTENDED_FEATURE_VERSION;ENABLE_REGEX_SUPPORT;DEBUG;DEVELOPMENT;DEBUG_INFO;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
@@ -103,7 +103,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PreprocessorDefinitions>ENABLE_REGEX_SUPPORT;RELEASE;DEVELOPMENT;DEBUG_INFO;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXTENDED_FEATURE_VERSION;ENABLE_REGEX_SUPPORT;RELEASE;DEVELOPMENT;DEBUG_INFO;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='ReleaseUnicode'">
@@ -111,7 +111,7 @@
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <PreprocessorDefinitions>ENABLE_REGEX_SUPPORT;UNICODE;RELEASE;DEVELOPMENT;DEBUG_INFO;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>EXTENDED_FEATURE_VERSION;ENABLE_REGEX_SUPPORT;UNICODE;RELEASE;DEVELOPMENT;DEBUG_INFO;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>  
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Retail'">

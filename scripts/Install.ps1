@@ -40,7 +40,7 @@ function Install-Memgrep {
 
     try {
         # Construct binary path
-        $BinPath = "bin\{0}\{1}\mseek.exe" -f $Platform, $Configuration
+        $BinPath = "bin\{0}\{1}\xmseek.exe" -f $Platform, $Configuration
         $RootPath = (Resolve-Path -Path "$PSScriptRoot\..").Path
         $ExeResolvedPath = Resolve-Path -Path "$RootPath\$BinPath" -ErrorAction Stop
         $ExePath = $ExeResolvedPath.Path

@@ -49,7 +49,7 @@ git update-index --assume-unchanged build.nfo
 ## 📦 Usage
 
 ```
-mseek.exe <-s string> <-p PID | -n PROCESSNAME | -i FILE> [options]
+xmseek.exe <-s string> <-p PID | -n PROCESSNAME | -i FILE> [options]
 ```
 
 ### 🔧 Required Arguments:
@@ -73,23 +73,23 @@ mseek.exe <-s string> <-p PID | -n PROCESSNAME | -i FILE> [options]
 1. Search for a string in a specific process using process name <sup>[1](#ref1)</sup>
 
 ```sh
-mseek.exe -n fsvpnservice_64.exe -s "<key>" 
+xmseek.exe -n fsvpnservice_64.exe -s "<key>" 
 ```
 2. Search for a string in a specific process using process id <sup>[2](#ref1)</sup>
 
 ```sh
-mseek.exe -pid 2476 -s "<key>" 
+xmseek.exe -pid 2476 -s "<key>" 
 ```
 
 3. Search for a string, print 200 bytes **after** found instance <sup>[3](#ref2)</sup>
 ```Get the address: 0x0000027B10F5E70E```
 ```sh
-mseek.exe -n fsvpnservice_64.exe -s "<key>" -x -a 200
+xmseek.exe -n fsvpnservice_64.exe -s "<key>" -x -a 200
 ```
 4. Search for a string, print 100 bytes **before** found instance <sup>[4](#ref3)</sup>
 ```Get the address: 0x0000027B10F5EDE4```
 ```sh
-mseek.exe -n fsvpnservice_64.exe -s "<key>" -x -b 100
+xmseek.exe -n fsvpnservice_64.exe -s "<key>" -x -b 100
 ```
 5. Get Delta Memory using addresses <sup>[5](#ref4)</sup>
 
@@ -108,7 +108,7 @@ The example below will look for all GUIDS with this REGEX pattern<sup>[7](#ref6)
 
 
 ```
-mseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
+xmseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
 ```
 --------------------------------
 
@@ -151,9 +151,9 @@ So get the PIDs:
 The example below will input all the PIDs found in the script and pass them the mseek for search <sup>[8](#ref7)</sup>
 
 ```bash
-.\scripts\Find-FSecure.ps1 | Select -ExpandProperty Id | D:\Dev\mseek\bin\x64\Debug\mseek.exe -l -s "<key>"
+.\scripts\Find-FSecure.ps1 | Select -ExpandProperty Id | D:\Dev\mseek\bin\x64\Debug\xmseek.exe -l -s "<key>"
 
-mseek.exe v1.2.0.222 - processes memory scan tool
+xmseek.exe v1.2.0.222 - processes memory scan tool
 regex support: enabled
 copyright (C) 1999-2023  Guillaume Plante
 built on Sun Apr 13 00:11:33 2025, for 64 bits platform
@@ -179,7 +179,7 @@ PID 11772 had 4 hits
 Below, we use the argument **-l or --list** WITHOUT piping any data in STDIN, it will search in ALL processes.
 
 ```bash
-D:\Dev\mseek\bin\x64\Debug\mseek.exe -l -s "<key>"
+D:\Dev\mseek\bin\x64\Debug\xmseek.exe -l -s "<key>"
 ```
 
 --------------------------------
