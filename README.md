@@ -157,6 +157,16 @@ PID 11772 had 4 hits
   - Hit at address: 0x0000020a604c2169
 ```
 
+--------------------------------
+
+
+## 💡 Search ALL processes
+
+Below, we use the argument **-l or --list** WITHOUT piping any data in STDIN, it will search in ALL processes.
+
+```bash
+D:\Dev\mseek\bin\x64\Debug\mseek.exe -l -s "<key>"
+```
 
 --------------------------------
 
