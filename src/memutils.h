@@ -100,6 +100,8 @@ public:
     void ReadMemoryRegion(std::string dllName,HANDLE hProcess, LPCVOID baseAddress, SIZE_T size);
     void ReadDllMemory(const char* processName, const char* dllName);
     DWORD FindProcessId(const char* processName);
+    void ListLoadedDlls(DWORD pid);
+
 
     bool GetProcessNameFromPID(DWORD pid, TCHAR* buffer, DWORD bufferSize);
     bool GetProcessNameFromPID(DWORD pid, std::string& processName);

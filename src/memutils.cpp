@@ -7,31 +7,42 @@
 //  Code licensed under the GNU GPL v3.0. See the LICENSE file for details.
 //==============================================================================
 
-
+// Project-specific headers
 #include "stdafx.h"
 #include "targetver.h"
 #include "version.h"
 #include "log.h"
 #include "memutils.h"
 
+// C standard headers
+#include <cstdio>
+#include <fcntl.h>      // For _O_TEXT, _O_BINARY, etc.
+#include <io.h>
 #include <stdio.h>
 #include <tchar.h>
+
+// Windows headers
 #include <windows.h>
-#include <Psapi.h>
 #include <Aclapi.h>
+#include <Psapi.h>
 #include <tlhelp32.h>
 #include <wtsapi32.h>
-#include <regex>   
-#include <string>
-#include <vector>
-#include <tlhelp32.h>
-#include <algorithm>
-#include <string_view>
-#include <inttypes.h>  // for PRIxPTR
-#include <cstdint>  // for uintptr_t
-#include <map>
-#include <vector>
 
+// C++ standard library headers
+#include <algorithm>
+#include <chrono>
+#include <cstdint>      // For uintptr_t
+#include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <inttypes.h>   // For PRIxPTR
+#include <iostream>
+#include <map>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 
 
@@ -306,17 +317,43 @@ HMODULE CMemUtils::GetModuleHandleInRemoteProcess(HANDLE hProcess, const std::st
 	return NULL;
 }
 
-#include <iomanip>
-#include <chrono>
-#include <filesystem>
-#include <sstream>
-#include <fcntl.h>  // (optional: for _O_TEXT, _O_BINARY etc.)
-#include <cstdint>  // for uintptr_t
-#include <inttypes.h>  // for PRIxPTR
-#include <io.h>  
-#include <chrono>
-#include <filesystem>
-#include <fstream>
+void CMemUtils::ListLoadedDlls(DWORD pid)
+{
+	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	if (!hProcess) {
+		std::cerr << "Failed to open process with PID " << pid << ". Error: " << GetLastError() << "\n";
+		return;
+	}
+
+	HMODULE hMods[1024];
+	DWORD cbNeeded;
+	std::vector<std::wstring> dllPaths;
+
+	if (EnumProcessModulesEx(hProcess, hMods, sizeof(hMods), &cbNeeded, LIST_MODULES_ALL)) {
+		size_t moduleCount = cbNeeded / sizeof(HMODULE);
+		for (size_t i = 0; i < moduleCount; ++i) {
+			WCHAR szModName[MAX_PATH];
+			if (GetModuleFileNameExW(hProcess, hMods[i], szModName, MAX_PATH)) {
+				dllPaths.emplace_back(szModName);
+			}
+		}
+	}
+	else {
+		std::cerr << "EnumProcessModulesEx failed for PID " << pid << ". Error: " << GetLastError() << "\n";
+		CloseHandle(hProcess);
+		return;
+	}
+
+	CloseHandle(hProcess);
+
+	std::sort(dllPaths.begin(), dllPaths.end());
+
+	std::wcout << L"\n[+] DLLs loaded by process PID " << pid << " (sorted by path):\n";
+	for (const auto& path : dllPaths) {
+		std::wcout << L"  - " << path << L"\n";
+	}
+}
+
 
 
 std::string CMemUtils::GenerateAndCreateUniqueDumpFile(std::string dllName) {
@@ -389,14 +426,7 @@ int CMemUtils::RunTest(std::string dllName) {
 	return 0;
 }
 
-#include <iostream>
-#include <fstream>
-#include <iomanip>
 
-#include <windows.h>
-#include <iostream>
-#include <fstream>
-#include <cstdio>
 
 void CMemUtils::ReadMemoryRegion(std::string dllName, HANDLE hProcess, LPCVOID baseAddress, SIZE_T size) {
 	_PrintableOnly = true;

@@ -43,6 +43,7 @@ enum class cmdlineOptTypes : uint8_t {
     HexDump,        // -x
     Unicode,        // -u
     Index,
+    ListDlls,
     PrintableOnly   // -z
 };
 

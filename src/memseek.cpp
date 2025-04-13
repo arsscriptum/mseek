@@ -216,6 +216,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	DWORD dwSlipBefore = 0;
 	DWORD dwSlipAfter = 0;
 
+	DWORD	dwListDllsPID = 0;
+
 	ESearchModeT searchMode = ESEARCH_NOTSET;
 	ESearchInputT searchInput = ESINPUT_NOTSET;
 	EMemoryTypeT eMemoryTypeFilter = EMemoryType::EMEM_ALL;
@@ -231,7 +233,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	std::string resultsFilterIndexStr;
 	std::string resultsFilterMemoryAddressStr;
 	std::string dllFilename;
-
+	std::string pidListDlls;
+	
 #ifdef UNICODE
 	char** argn = (char**)Convert::allocate_argnw(argc, argv);
 #else
@@ -249,8 +252,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optBefore({ "-b", "--before" }, "Print this many bytes before the match in the hex dump (used with -x)", true, cmdlineOptTypes::Before);
 	SCmdlineOptValues optColor({ "-c", "--color" }, "Use colored output for better readability", false, cmdlineOptTypes::Color);
 	SCmdlineOptValues optAddress({ "-d", "--address" }, "Specify memory address to search", true, cmdlineOptTypes::Address);
-	SCmdlineOptValues optDllDump({ "-g", "--dllmemdump" }, "Dump the memory used by a process using a specific dll", true, cmdlineOptTypes::DllDump);
 	SCmdlineOptValues optElevate({ "-e", "--elevate" }, "Elevate Privileges if required", false, cmdlineOptTypes::Elevate);
+	SCmdlineOptValues optDllDump({ "-g", "--dllmemdump" }, "Dump the memory used by a process using a specific dll", true, cmdlineOptTypes::DllDump);
 	SCmdlineOptValues optHelp({ "-h", "--help" }, "Show help message", false, cmdlineOptTypes::Help);
 	SCmdlineOptValues optInputFile({ "-i", "--input" }, "Input file for search strings", true, cmdlineOptTypes::InputFile);
 	SCmdlineOptValues optListAll({ "-l", "--list" }, "Search all processes for the string, or use STDIN", false, cmdlineOptTypes::ListAll);
@@ -263,7 +266,8 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optSearchString({ "-s", "--string" }, "String to search for", true, cmdlineOptTypes::SearchString);
 	SCmdlineOptValues optMemType({ "-t", "--type" }, "Filter memory regions by type: image, mapped, or private", true, cmdlineOptTypes::MemType);
 	SCmdlineOptValues optUnicode({ "-u", "--unicode" }, "Unicode", false, cmdlineOptTypes::Unicode);
-	SCmdlineOptValues optHexDump({ "-x", "--hexdump" }, "Dump memory as hex when a match is found", false, cmdlineOptTypes::HexDump);
+	SCmdlineOptValues optListDlls({ "-w", "--listdlls" }, "List Dlls from PID", true, cmdlineOptTypes::ListDlls);
+	SCmdlineOptValues optHexDump({ "-x", "--hexdump" }, "Dump memory as hex when a match is found", false, cmdlineOptTypes::HexDump);	
 	SCmdlineOptValues optResultsIndex({ "-y", "--only" }, "Filter results: dump only this results Index", true, cmdlineOptTypes::Index);
 	SCmdlineOptValues optPrintableOnly({ "-z", "--textdump" }, "Output only printable ASCII characters from the matched memory", false, cmdlineOptTypes::PrintableOnly);
 
@@ -292,7 +296,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	inputParser->addOption(optUnicode);
 	inputParser->addOption(optVerbose);
 	inputParser->addOption(optResultsIndex);
-	
+	inputParser->addOption(optListDlls);
 
 	// Evaluate options
 	bool showHelp = inputParser->isSet(optHelp);
@@ -316,6 +320,14 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 		logmsg("searching dll %s", dllFilename.c_str());
 		return CMemUtils::Get().RunTest(dllFilename);
 	}
+	 
+	
+	if (inputParser->get_option_argument(optListDlls, pidListDlls)) {
+		dwListDllsPID = atoi(pidListDlls.c_str());
+		logmsg("listing dlls for process id %d (%s)\n", dwListDllsPID, pidListDlls.c_str());
+		CMemUtils::Get().ListLoadedDlls(dwListDllsPID);  // Replace 1234 with actual PID
+		return 0;
+	}
 	if (inputParser->get_option_argument(optAfter, afterBytes)) {
 		dwSlipAfter = atoi(afterBytes.c_str());
 	}
@@ -332,6 +344,10 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	if (inputParser->get_option_argument(optInputFile, inputFile)) {
 		searchInput = ESINPUT_FILE;
 	}
+
+
+	CMemUtils::Get().ListLoadedDlls(1234);  // Replace 1234 with actual PID
+
 	
 	
 	if (inputParser->get_option_argument(optProcessName, procName)) {
