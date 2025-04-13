@@ -12,16 +12,16 @@
 
 #ifdef _RELEASE
 unsigned int mseek::version::major  = 1;
-unsigned int mseek::version::minor  = 2;
+unsigned int mseek::version::minor  = 4;
 unsigned int mseek::version::build  = 0;
 unsigned int mseek::version::rev    = release;
 std::string  mseek::version::sha    = "main";
 std::string  mseek::version::branch = "a7ad0230";
 #else
 unsigned int mseek::version::major  = 1;
-unsigned int mseek::version::minor  = 2;
+unsigned int mseek::version::minor  = 4;
 unsigned int mseek::version::build  = 0;
-unsigned int mseek::version::rev    = 193;
+unsigned int mseek::version::rev    = 0;
 std::string  mseek::version::sha    = "main";
 std::string  mseek::version::branch = "a7ad0230";
 #endif // _RELEASE
