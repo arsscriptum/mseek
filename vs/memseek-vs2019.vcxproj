@@ -193,6 +193,7 @@ $(ProjectRoot)scripts\post-build.bat</Command>
   <ItemGroup>
     <ClCompile Include="..\src\cdll.cpp" />
     <ClCompile Include="..\src\cmdline.cpp" />
+    <ClCompile Include="..\src\cthread.cpp" />
     <ClCompile Include="..\src\init.cpp" />
     <ClCompile Include="..\src\log.cpp" />
     <ClCompile Include="$(ProjectRoot)src\stdafx.cpp">
@@ -200,6 +201,9 @@ $(ProjectRoot)scripts\post-build.bat</Command>
     </ClCompile>
     <ClCompile Include="..\src\memseek.cpp" />
     <ClCompile Include="..\src\memutils.cpp" />
+    <ClCompile Include="..\src\psinfo.cpp" />
+    <ClCompile Include="..\src\psutils.cpp" />
+    <ClCompile Include="..\src\ps_enum.cpp" />
     <ClCompile Include="..\src\version.cpp" />
     <ClCompile Include="..\src\win32.cpp" />
   </ItemGroup>
@@ -207,10 +211,14 @@ $(ProjectRoot)scripts\post-build.bat</Command>
     <ClInclude Include="..\src\cdll.h" />
     <ClInclude Include="..\src\cmdline.h" />
     <ClInclude Include="..\src\cmdline_opt_values.h" />
+    <ClInclude Include="..\src\cthread.h" />
     <ClInclude Include="..\src\log.h" />
     <ClInclude Include="..\src\macros.h" />
     <ClInclude Include="..\src\memutils.h" />
     <ClInclude Include="..\src\nowarns.h" />
+    <ClInclude Include="..\src\psinfo.h" />
+    <ClInclude Include="..\src\psutils.h" />
+    <ClInclude Include="..\src\ps_enum.h" />
     <ClInclude Include="..\src\stdafx.h" />
     <ClInclude Include="..\src\targetver.h" />
     <ClInclude Include="..\src\version.h" />

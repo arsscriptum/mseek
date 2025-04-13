@@ -46,6 +46,18 @@
     <ClCompile Include="..\src\memutils.cpp">
       <Filter>Source</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\ps_enum.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\psinfo.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\psutils.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\cthread.cpp">
+      <Filter>Source</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\stdafx.h">
@@ -79,6 +91,18 @@
       <Filter>Headers</Filter>
     </ClInclude>
     <ClInclude Include="..\src\cmdline_opt_values.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\ps_enum.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\psinfo.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\psutils.h">
+      <Filter>Headers</Filter>
+    </ClInclude>
+    <ClInclude Include="..\src\cthread.h">
       <Filter>Headers</Filter>
     </ClInclude>
   </ItemGroup>

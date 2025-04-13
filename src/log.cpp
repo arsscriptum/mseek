@@ -17,6 +17,9 @@
 
 extern bool g_ColoredOutput;
 extern bool g_forceNoColors;
+
+
+
 void logmsgn(const char* format, ...)
 {
 	if (g_ColoredOutput) {

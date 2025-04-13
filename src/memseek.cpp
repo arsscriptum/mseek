@@ -27,9 +27,12 @@
 #include <cstdio>
 #include <cstdarg>
 #include <inttypes.h>  // for PRIxPTR
-
+#include <io.h>     // For _isatty
+#include <fcntl.h>  // (optional: for _O_TEXT, _O_BINARY etc.)
 #include <cstdint>  // for uintptr_t
-
+#include "ps_enum.h"
+#include "psinfo.h"
+#include "psutils.h"
 
 bool g_ColoredOutput = false;
 bool g_bSuppress = false;
@@ -45,8 +48,11 @@ typedef enum ESearchInput {
 typedef enum ESearchMode {
 	ESEARCH_NOTSET,
 	ESEARCH_PID,
-	ESEARCH_PNAME
+	ESEARCH_PNAME,
+	ESEARCH_ALL_PROCESSES,
+	ESEARCH_STDIN_PROCESSES
 } ESearchModeT;
+
 
 void usage(CmdlineParser* inputParser) {
 #ifdef PLATFORM_WIN64
@@ -350,7 +356,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	}
 
 	if (g_bSuppress && isOptionSetVerboseMode) {
-		logmsg("Warning: Quiet and Verbose: Verbose superceed Quiet...\n");
+		logwarn("Quiet and Verbose: Verbose superceed Quiet...\n");
 		g_bSuppress = false;
 	}
 	
@@ -361,6 +367,43 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	}
 
 	CMemUtils::Get().Initialize(isOptionSetDumpHex, isOptionSetPrintableOnly,g_bSuppress, dwSlipBefore, dwSlipAfter, isOptionSetExtendedMemInfo);
+
+	bool checkStdin = false;
+	std::vector<DWORD> pids;
+	std::string line;
+	if (isOptionSetListAllProcesses) {
+		checkStdin = true;
+	}
+
+	if (checkStdin) {
+		logmsg("checking stdin...\n");
+		// Check if stdin is piped (not from console)
+		if (_isatty(_fileno(stdin))) {
+			logmsg("No piped input detected on stdin\n");
+			searchMode = ESEARCH_ALL_PROCESSES;
+		}
+		else {
+			std::string line;
+			while (std::getline(std::cin, line)) {
+				try {
+					DWORD pid = std::stoul(line);
+					pids.push_back(pid);
+				}
+				catch (...) {
+					logerror("Invalid input : %s\n", line);
+					exit_error(-1, sleepOnExit);
+				}
+			}
+
+			if (pids.empty()) {
+				logwarn("No valid PIDs received from stdin.\n");
+				searchMode = ESEARCH_ALL_PROCESSES;
+			}
+			else {
+				searchMode = ESEARCH_STDIN_PROCESSES;
+			}
+		}
+	}
 
 
 #ifdef _DEBUG_CMDLINE
@@ -411,8 +454,27 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 
 	CMemUtils::Get().EnableDebugPrivilege(GetCurrentProcess());
 
+	if (searchMode == ESEARCH_ALL_PROCESSES) {
+		logmsg("search all processes...\n");
+		CProcessEnumerator penum;
+		penum.CreateThread();
+		while (!penum.IsDone()) {
 
-	if (searchMode == ESEARCH_PNAME) {
+			Sleep(10);
+			
+		}
+
+		logmsg("done\n");
+		return 0;
+
+	}else if (searchMode == ESEARCH_STDIN_PROCESSES) {
+		// Proceed with processing
+		for (DWORD pid : pids) {
+			logmsg("searching %d\n", pid);
+			// Call your memory scanner function here...
+		}
+		return 0;
+	}else if (searchMode == ESEARCH_PNAME) {
 		logmsg( "validating process name \"%s\"\n", procName.c_str());
 		DWORD foundPid = 0;
 		bool processFound = CMemUtils::Get().GetProcessPidFromName(procName, foundPid);
