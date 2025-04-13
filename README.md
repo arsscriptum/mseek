@@ -5,9 +5,13 @@
 
 # mseek - process scanner / memory search tool for strings and regular expressions
 
-<div style="font-weight:bold;background-color:red;color:white;padding:2%;"><h2>This is an Extended Scope Version on Branch ext-dev & extended_scope_main</h2></div>
+<div style="font-weight:bold;background-color:red;color:white;padding:2%;"><h2> 😈 ⚠️ 😈 ⚠️ 😈 This is an Extended Scope Version on Branch ext-dev & extended_scope_main 😈 ⚠️ 😈 ⚠️ 😈</h2></div>
 <div style="font-weight:bold;background-color:rgb(205,92,92);color:white;padding:2%;">
-The added features are super useful when reverse-engineering software, but I feel are outside the scope of the original project, hence for now, instead of creating a new program, I will extend the features and treat this as a separate entity.
+
+➱ ➬ ➫ ➯ ⇨ The added features are super useful when reverse-engineering software, but I feel are outside the scope of the original project. 🠼 🡀 🠸 🢘 🡸
+
+➱ ➬ ➫ ➯ ⇨ Hence for now, instead of creating a new program, I will extend the features and treat this as a separate entity. 🠼 🡀 🠸 🢘 🡸
+
 </div>
 
 
