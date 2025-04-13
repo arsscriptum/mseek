@@ -265,8 +265,9 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	SCmdlineOptValues optRegex({ "-r", "--regex" }, "Interpret the search string as a regex pattern", false, cmdlineOptTypes::Regex);
 	SCmdlineOptValues optSearchString({ "-s", "--string" }, "String to search for", true, cmdlineOptTypes::SearchString);
 	SCmdlineOptValues optMemType({ "-t", "--type" }, "Filter memory regions by type: image, mapped, or private", true, cmdlineOptTypes::MemType);
+	SCmdlineOptValues optNoBanner({ "-v", "--nobanner" }, "No Banner", false, cmdlineOptTypes::NoBanner);
 	SCmdlineOptValues optUnicode({ "-u", "--unicode" }, "Unicode", false, cmdlineOptTypes::Unicode);
-	SCmdlineOptValues optListDlls({ "-w", "--listdlls" }, "List Dlls from PID", true, cmdlineOptTypes::ListDlls);
+	SCmdlineOptValues optListDlls({ "-w", "--listdlls" }, "List Dlls loaded by PID. Output formatted in CSV", true, cmdlineOptTypes::ListDlls);
 	SCmdlineOptValues optHexDump({ "-x", "--hexdump" }, "Dump memory as hex when a match is found", false, cmdlineOptTypes::HexDump);	
 	SCmdlineOptValues optResultsIndex({ "-y", "--only" }, "Filter results: dump only this results Index", true, cmdlineOptTypes::Index);
 	SCmdlineOptValues optPrintableOnly({ "-z", "--textdump" }, "Output only printable ASCII characters from the matched memory", false, cmdlineOptTypes::PrintableOnly);
@@ -297,6 +298,7 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	inputParser->addOption(optVerbose);
 	inputParser->addOption(optResultsIndex);
 	inputParser->addOption(optListDlls);
+	inputParser->addOption(optNoBanner);
 
 	// Evaluate options
 	bool showHelp = inputParser->isSet(optHelp);
@@ -315,13 +317,19 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	bool isOptionSetElevatePrivileges = inputParser->isSet(optElevate);
 	bool isOptionSetExtendedMemInfo = inputParser->isSet(optMemoryInfo);
 	bool isOptionSetDllDump = inputParser->isSet(optDllDump);
+	bool isOptionSetNoBanner = inputParser->isSet(optNoBanner);
+	
+
+
+	if (!isOptionSetNoBanner) {
+		banner();
+	}
 
 	if (inputParser->get_option_argument(optDllDump, dllFilename)) {
 		logmsg("searching dll %s", dllFilename.c_str());
 		return CMemUtils::Get().RunTest(dllFilename);
 	}
 	 
-	
 	if (inputParser->get_option_argument(optListDlls, pidListDlls)) {
 		dwListDllsPID = atoi(pidListDlls.c_str());
 		logmsg("listing dlls for process id %d (%s)\n", dwListDllsPID, pidListDlls.c_str());
@@ -381,9 +389,6 @@ int _tmain(int argc, TCHAR* argv[], TCHAR* envp[])
 	}
 
 
-	if (!g_bSuppress) { 
-		banner();
-	}
 
 	if (showHelp) {
 		usage(inputParser);

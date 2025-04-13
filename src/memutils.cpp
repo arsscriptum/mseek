@@ -11,6 +11,7 @@
 #include "stdafx.h"
 #include "targetver.h"
 #include "version.h"
+#include "win32.h"
 #include "log.h"
 #include "memutils.h"
 
@@ -321,37 +322,28 @@ void CMemUtils::ListLoadedDlls(DWORD pid)
 {
 	HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
 	if (!hProcess) {
-		std::cerr << "Failed to open process with PID " << pid << ". Error: " << GetLastError() << "\n";
+		logmsg("Failed to open process with PID %d (error %d)\n", pid, GetLastError());
 		return;
 	}
 
 	HMODULE hMods[1024];
 	DWORD cbNeeded;
 	std::vector<std::wstring> dllPaths;
+	C::Process::TModules modulesInfoList;
 
-	if (EnumProcessModulesEx(hProcess, hMods, sizeof(hMods), &cbNeeded, LIST_MODULES_ALL)) {
-		size_t moduleCount = cbNeeded / sizeof(HMODULE);
-		for (size_t i = 0; i < moduleCount; ++i) {
-			WCHAR szModName[MAX_PATH];
-			if (GetModuleFileNameExW(hProcess, hMods[i], szModName, MAX_PATH)) {
-				dllPaths.emplace_back(szModName);
-			}
+	std::cout << "ModuleName,ModulePath,BaseAddress,Size" << "\n";
+	if (C::Process::FillModuleListTH32(modulesInfoList, pid)) {
+		for (size_t i = 0; i < modulesInfoList.size(); ++i) {
+			std::cout << modulesInfoList[i].moduleName << "," << modulesInfoList[i].imageName << "," << modulesInfoList[i].baseAddress << "," << modulesInfoList[i].size << "\n";			
 		}
-	}
-	else {
-		std::cerr << "EnumProcessModulesEx failed for PID " << pid << ". Error: " << GetLastError() << "\n";
+	} else {
+		logmsg("FillModuleListPSAPI failed for PID %d (error %d)\n", pid, GetLastError());
 		CloseHandle(hProcess);
 		return;
 	}
 
 	CloseHandle(hProcess);
 
-	std::sort(dllPaths.begin(), dllPaths.end());
-
-	std::wcout << L"\n[+] DLLs loaded by process PID " << pid << " (sorted by path):\n";
-	for (const auto& path : dllPaths) {
-		std::wcout << L"  - " << path << L"\n";
-	}
 }
 
 

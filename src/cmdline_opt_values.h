@@ -42,6 +42,7 @@ enum class cmdlineOptTypes : uint8_t {
     Verbose,        // -v
     HexDump,        // -x
     Unicode,        // -u
+    NoBanner,        // -v
     Index,
     ListDlls,
     PrintableOnly   // -z
