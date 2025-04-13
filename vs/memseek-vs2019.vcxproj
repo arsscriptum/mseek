@@ -60,14 +60,14 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <TargetName>mseek</TargetName>
+    <TargetName>xmseek</TargetName>
     <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='Win32'">
-    <TargetName>mseek32</TargetName>
+    <TargetName>xmseek32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <TargetName>mseek</TargetName>
+    <TargetName>xmseek</TargetName>
   </PropertyGroup>
   <ItemGroup>
     <ResourceCompile Include="$(ProjectRoot)src\resources.rc" />
