@@ -35,6 +35,24 @@ Or
 
 Visual Studio 2019
 
+--------------------------------
+
+
+### 32bit Version Build in Win32 Configuration
+
+![build](img/buildx86.png)
+
+### NOTE 
+
+IF NOT RUNNNIG AS ADMIN, Some Process Are Not Accessible! If you cannot read a process memory, open a shell as administrator!
+
+#### Auto-Elevate Privilege
+
+You can use ```-e``` to auto -elevate privileges (not fully supported, best you run directly in admin mode). If detected, auto elevate will sleep on exit, because a new window is opened and you want to read the results.
+
+
+--------------------------------
+
 
 ### Version generation
 
@@ -207,36 +225,22 @@ xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanne
 The example below will use the ```--listdlls``` option to list the DLLs from a process <sup>[9](#ref8)</sup> AND Use the ```Get-DllExportsList``` script to list the functions from those DLLS <sup>[10](#ref9)</sup>
 
 ```powershell
-$Dlls = @()
-$Dlls = xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanner' to remove program info header #> `
-                    | Select -Skip 1                     <# 'Select -Skip 1' to skip log line #> `
-                    | ConvertFrom-Csv                    <# we use the 'ConvertFrom-Csv' cmdlet to parse the output #> `
-                    | Sort-Object -Property BaseAddress  <# we use the 'Sort-Object' cmdlet to sort every dll entries based on the address (load order)  #> `
-                    | Where ModulePath -match 'F-Secure' <# filter out the DLLs not in the F-Secure directory #>
+>
+> $Dlls = @()
+> $Dlls = xmseek.exe --listdlls 18648 --nobanner              <# listdlls, '--nobanner' to remove program info header #> `
+                    | Select -Skip 1                          <# 'Select -Skip 1' to skip log line #> `
+                    | ConvertFrom-Csv                         <# we use the 'ConvertFrom-Csv' cmdlet to parse the output #> `
+                    | Sort-Object -Property BaseAddress       <# we use the 'Sort-Object' cmdlet to sort every dll entries based on the address (load order)  #> `
+                    | Where ModulePath -match 'F-Secure'      <# filter out the DLLs not in the F-Secure directory #>
+
 > $Dlls | Where ModuleName -match 'vpn' | Select -ExpandProperty ModulePath | % { $path = "$_"
              ForEach($func in (Get-DllExportsList -DllPath "$path")){
                 $sig = '{0} {1}({2})' -f $func.ReturnValue, $func.Member, $func.Parameters
                 $sig
   } 
  }
+> ...........
 ```                   
-
-
---------------------------------
-
-
-
-### 32bit Version Build in Win32 Configuration
-
-![build](img/buildx86.png)
-
-### NOTE 
-
-IF NOT RUNNNIG AS ADMIN, Some Process Are Not Accessible! If you cannot read a process memory, open a shell as administrator!
-
-#### Auto-Elevate Privilege
-
-You can use ```-e``` to auto -elevate privileges (not fully supported, best you run directly in admin mode). If detected, auto elevate will sleep on exit, because a new window is opened and you want to read the results.
 
 
 --------------------------------
