@@ -108,7 +108,7 @@ The example below will look for all GUIDS with this REGEX pattern<sup>[7](#ref6)
 
 
 ```
-xmseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
+> xmseek.exe -n fsvpnservice_64.exe -s "\{[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\}" -t private -r -o "d:\mem.txt" -x -z
 ```
 --------------------------------
 
@@ -151,7 +151,7 @@ So get the PIDs:
 The example below will input all the PIDs found in the script and pass them the mseek for search <sup>[8](#ref7)</sup>
 
 ```bash
-.\scripts\Find-FSecure.ps1 | Select -ExpandProperty Id | D:\Dev\mseek\bin\x64\Debug\xmseek.exe -l -s "<key>"
+.\scripts\Find-FSecure.ps1 | Select -ExpandProperty Id |  > xmseek.exe -l -s "<key>"
 
 xmseek.exe v1.2.0.222 - processes memory scan tool
 regex support: enabled
@@ -179,10 +179,51 @@ PID 11772 had 4 hits
 Below, we use the argument **-l or --list** WITHOUT piping any data in STDIN, it will search in ALL processes.
 
 ```bash
-D:\Dev\mseek\bin\x64\Debug\xmseek.exe -l -s "<key>"
+ > xmseek.exe -l -s "<key>"
 ```
 
 --------------------------------
+
+
+
+## 💡 List Processes Loaded Dlls
+
+The example below will use the ```--listdlls``` option to list the DLLs from a process <sup>[9](#ref8)</sup>
+
+```powershell
+xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanner' to remove program info header #> `
+                    | Select -Skip 1                     <# 'Select -Skip 1' to skip log line #> `
+                    | ConvertFrom-Csv                    <# we use the 'ConvertFrom-Csv' cmdlet to parse the output #> `
+                    | Sort-Object -Property BaseAddress  <# we use the 'Sort-Object' cmdlet to sort every dll entries based on the address (load order)  #> `
+                    | Where ModulePath -match 'F-Secure' <# filter out the DLLs not in the F-Secure directory #>
+```
+
+
+--------------------------------
+
+
+## 💡 List Processes Loaded Dlls and the functions
+
+The example below will use the ```--listdlls``` option to list the DLLs from a process <sup>[9](#ref8)</sup> AND Use the ```Get-DllExportsList``` script to list the functions from those DLLS <sup>[10](#ref9)</sup>
+
+```powershell
+xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanner' to remove program info header #> `
+                    | Select -Skip 1                     <# 'Select -Skip 1' to skip log line #> `
+                    | ConvertFrom-Csv                    <# we use the 'ConvertFrom-Csv' cmdlet to parse the output #> `
+                    | Sort-Object -Property BaseAddress  <# we use the 'Sort-Object' cmdlet to sort every dll entries based on the address (load order)  #> `
+                    | Where ModulePath -match 'F-Secure' <# filter out the DLLs not in the F-Secure directory #>
+> $Dlls | Where ModuleName -match 'vpn' | Select -ExpandProperty ModulePath | % { $path = "$_"
+             ForEach($func in (Get-DllExportsList -DllPath "$path")){
+                $sig = '{0} {1}({2})' -f $func.ReturnValue, $func.Member, $func.Parameters
+                $sig
+  } 
+ }
+```                   
+
+
+--------------------------------
+
+
 
 ### 32bit Version Build in Win32 Configuration
 
@@ -276,3 +317,16 @@ This software is provided as-is for educational and forensic analysis purposes. 
 <a id="ref7"></a>[8] 
 
 ![8](img/stdin.png)
+
+
+-------------------------------
+
+<a id="ref8"></a>[9] 
+
+![9](img/dlls.png)
+
+-------------------------------
+
+<a id="ref9"></a>[10] 
+
+![10](img/funcs.png)

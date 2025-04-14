@@ -232,7 +232,7 @@ function Get-DllExportsList {
                 $v_ord = $m.Groups['ordinal'].Value -as [int]
                 $v_hint = [int]("0x$($m.Groups['hint'].Value)")
                 $v_rva = $($m.Groups['rva'].Value.ToUpper())
-                $v_decorated = $($m.Groups['name'].Value).Trim()
+                $v_decorated = $($m.Groups['name'].Value)
                 
                 $o | Add-Member -MemberType NoteProperty -Name "Decorated" -Value $v_decorated -Force
                 $o | Add-Member -MemberType NoteProperty -Name "Ordinal" -Value $v_ord -Force
@@ -247,7 +247,7 @@ function Get-DllExportsList {
                 $v_ord = $rawline.Substring(0, $indexes[1]).Trim()
                 $v_hint = $rawline.Substring($indexes[1], ($indexes[2] - $indexes[1])).Trim()
                 $v_rva = $rawline.Substring($indexes[2], ($indexes[3] - $indexes[2])).Trim()
-                $v_decorated = $rawline.Substring($indexes[3], ($rawline.Length - $indexes[3])).Trim()
+                $v_decorated = $rawline.Substring($indexes[3], ($rawline.Length - $indexes[3]))
                 
                 $o | Add-Member -MemberType NoteProperty -Name "Decorated" -Value $v_decorated -Force
                 $o | Add-Member -MemberType NoteProperty -Name "Ordinal" -Value $v_ord -Force
@@ -261,7 +261,7 @@ function Get-DllExportsList {
             }
             Write-Verbose "Get-UndecoratedName $v_decorated"
             $UndecoratedName = Get-UndecoratedName $v_decorated
-            if($True){
+            if($UndecoratedName -ne $v_decorated){
                 [regex]$undecor_pattern = '^(?<retval_cc>[\w\*\&\s:<>,]+)\s+(?<namespace>(?:[\w:]+)::)?(?<funcname>[\w~]+)\((?<params>.*)\)'
 
                 $nspace = ""
@@ -269,7 +269,7 @@ function Get-DllExportsList {
                 $params = ""
                 $retval_cc = ""
 
-                if ($UndecoratedName -ne $v_decorated) {
+                
 
                     # Attempt to extract components from UndecoratedName C++ signature
                     # Example: FSVpn::Site* __thiscall FSVpnSDK::FSVpn::getDefaultSite(void)
@@ -319,7 +319,8 @@ function Get-DllExportsList {
                     $o | Add-Member -MemberType NoteProperty -Name "Parameters" -Value "" -Force
                 }
                 [void]$ObjectList.Add($o)
-            } else {
+        }
+                    } else {
                 Write-Warning "Parse Error $fnline"
 
                 $o | Add-Member -MemberType NoteProperty -Name "Namespace" -Value "" -Force
@@ -328,7 +329,6 @@ function Get-DllExportsList {
                 $o | Add-Member -MemberType NoteProperty -Name "Parameters" -Value "" -Force
                 [void]$ObjectList.Add($o)
             }
-        }
     }
 
     return $ObjectList
