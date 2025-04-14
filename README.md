@@ -207,7 +207,8 @@ xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanne
 The example below will use the ```--listdlls``` option to list the DLLs from a process <sup>[9](#ref8)</sup> AND Use the ```Get-DllExportsList``` script to list the functions from those DLLS <sup>[10](#ref9)</sup>
 
 ```powershell
-xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanner' to remove program info header #> `
+$Dlls = @()
+$Dlls = xmseek.exe --listdlls 18648 --nobanner                   <# listdlls, '--nobanner' to remove program info header #> `
                     | Select -Skip 1                     <# 'Select -Skip 1' to skip log line #> `
                     | ConvertFrom-Csv                    <# we use the 'ConvertFrom-Csv' cmdlet to parse the output #> `
                     | Sort-Object -Property BaseAddress  <# we use the 'Sort-Object' cmdlet to sort every dll entries based on the address (load order)  #> `
