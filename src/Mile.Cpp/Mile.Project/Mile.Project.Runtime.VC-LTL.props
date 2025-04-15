@@ -1,0 +1,27 @@
+<!-- ╔════════════════════════════════════════════════════════════════════════════════╗
+     ║                                                                                ║
+     ║   Mile.Project.Runtime.VC-LTL.props                                            ║
+     ║   Definition for Visual Studio C++ Project                                     ║
+     ║                                                                                ║
+     ╟────────────────────────────────────────────────────────────────────────────────╢
+     ║   Guillaume Plante <codegp@icloud.com>                                         ║
+     ║   Code licensed under the GNU GPL v3.0. See the LICENSE file for details.      ║
+     ╚════════════════════════════════════════════════════════════════════════════════╝ -->
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Debug'">MultiThreadedDebug</RuntimeLibrary>
+      <RuntimeLibrary Condition="'$(Configuration)'=='Release'">MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <PackageReference Include="VC-LTL">
+      <Version>5.0.4</Version>
+    </PackageReference>
+  </ItemGroup>
+</Project>

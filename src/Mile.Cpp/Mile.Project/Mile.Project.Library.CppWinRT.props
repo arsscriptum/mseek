@@ -1,0 +1,21 @@
+<!-- ╔════════════════════════════════════════════════════════════════════════════════╗
+     ║                                                                                ║
+     ║   Mile.Project.Library.CppWinRT.props                                          ║
+     ║   Definition for Visual Studio C++ Project                                     ║
+     ║                                                                                ║
+     ╟────────────────────────────────────────────────────────────────────────────────╢
+     ║   Guillaume Plante <codegp@icloud.com>                                         ║
+     ║   Code licensed under the GNU GPL v3.0. See the LICENSE file for details.      ║
+     ╚════════════════════════════════════════════════════════════════════════════════╝ -->
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.CppWinRT">
+      <Version>2.0.211028.7</Version>
+    </PackageReference>
+  </ItemGroup>
+</Project>

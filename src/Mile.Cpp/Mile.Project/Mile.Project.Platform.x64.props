@@ -1,0 +1,27 @@
+<!-- ╔════════════════════════════════════════════════════════════════════════════════╗
+     ║                                                                                ║
+     ║   Mile.Project.Platform.x64.props                                              ║
+     ║   Definition for Visual Studio C++ Project                                     ║
+     ║                                                                                ║
+     ╟────────────────────────────────────────────────────────────────────────────────╢
+     ║   Guillaume Plante <codegp@icloud.com>                                         ║
+     ║   Code licensed under the GNU GPL v3.0. See the LICENSE file for details.      ║
+     ╚════════════════════════════════════════════════════════════════════════════════╝ -->
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+</Project>
+
